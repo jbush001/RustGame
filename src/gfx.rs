@@ -29,10 +29,7 @@ pub struct RenderContext {
     window: sdl2::video::Window,
     _gl_context: sdl2::video::GLContext,
     vbo: gl::types::GLuint,
-    shader_program: gl::types::GLuint,
     atlas_texture_id: gl::types::GLuint,
-    atlas_width: u32,
-    atlas_height: u32,
     vertices: Vec<f32>,
 }
 
@@ -74,7 +71,7 @@ fn check_gl_error() {
 
 // We use a single texture atlas with all images to avoid state changes during
 // rendering.
-fn init_texture_atlas() -> (gl::types::GLuint, u32, u32) {
+fn init_texture_atlas() -> gl::types::GLuint {
     // The atlas file is copied into the same directory as our executable.
     let exe_path = std::env::current_exe().unwrap();
     let exe_dir = exe_path.parent().unwrap();
@@ -117,14 +114,26 @@ fn init_texture_atlas() -> (gl::types::GLuint, u32, u32) {
             raster_data.as_ptr() as *const _,
         );
 
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
         check_gl_error();
 
-        (atlas_texture_id, atlas_width, atlas_height)
+        atlas_texture_id
     }
+}
+
+//
+// The matrix is a, b, c, d
+// the point is x, y
+//
+// | a b | * | x | = | x' |
+// | c d |   | y |   | y' |
+//
+fn rotate(point: &(f32, f32), matrix: &(f32, f32, f32, f32)) -> (f32, f32) {
+    (matrix.0 * point.0 + matrix.1 * point.1,
+    matrix.2 * point.0 + matrix.3 * point.1)
 }
 
 impl RenderContext {
@@ -133,7 +142,6 @@ impl RenderContext {
         let window = video_subsystem
             .window("Game", WINDOW_WIDTH, WINDOW_HEIGHT)
             .opengl()
-            .resizable()
             .build()
             .unwrap();
 
@@ -161,7 +169,7 @@ impl RenderContext {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
         }
 
-        let (atlas_texture_id, atlas_width, atlas_height) = init_texture_atlas();
+        let atlas_texture_id = init_texture_atlas();
 
         unsafe  {
             // Assign texture unit
@@ -176,23 +184,23 @@ impl RenderContext {
             window,
             _gl_context: gl_context,
             vbo,
-            shader_program: program,
             atlas_texture_id,
             vertices: Vec::new(),
-            atlas_width,
-            atlas_height,
         })
     }
 
     // Add an image to the display list.
-    pub fn draw_image(&mut self, x: i32, y: i32, image_info: &(f32, f32, f32, f32, u32, u32)) {
+    pub fn draw_image(
+        &mut self,
+        position: (i32, i32),
+        image_info: &(f32, f32, f32, f32, u32, u32),
+        rotation: f32,
+        origin: (i32, i32)
+    ) {
         let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = image_info.clone();
 
-        let screen_left = (x as f32 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
-        let screen_top = 1.0 - (y as f32 / WINDOW_HEIGHT as f32) * 2.0;
-        let screen_right = ((x + width as i32) as f32 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
-        let screen_bottom = 1.0 - ((y + height as i32) as f32 / WINDOW_HEIGHT as f32) * 2.0;
-
+        // Images are square. We compose them of two adjacent triangles, with four
+        // vertices:
         // 0      1
         // +------+
         // |    / |
@@ -202,16 +210,58 @@ impl RenderContext {
         // +------+
         // 2      3
 
+        let left = -origin.0 as f32;
+        let top = -origin.1 as f32;
+        let right = left + width as f32;
+        let bottom = top + height as f32;
+
+        let (mut p0, mut p1, mut p2, mut p3) = if rotation == 0.0 {
+            ((left, top), (right, top), (left, bottom), (right, bottom))
+        } else {
+            let crot = f32::cos(rotation);
+            let srot = f32::sin(rotation);
+            let rotmat = (
+                crot, -srot,
+                srot, crot,
+            );
+
+            (
+                rotate(&(left, top), &rotmat),
+                rotate(&(right, top), &rotmat),
+                rotate(&(left, bottom), &rotmat),
+                rotate(&(right, bottom), &rotmat),
+            )
+        };
+
+        p0.0 += position.0 as f32;
+        p1.0 += position.0 as f32;
+        p2.0 += position.0 as f32;
+        p3.0 += position.0 as f32;
+        p0.1 += position.1 as f32;
+        p1.1 += position.1 as f32;
+        p2.1 += position.1 as f32;
+        p3.1 += position.1 as f32;
+
+        // Convert to OpenGL screen space
+        p0.0 = (p0.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
+        p1.0 = (p1.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
+        p2.0 = (p2.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
+        p3.0 = (p3.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
+        p0.1 = 1.0 - (p0.1 / WINDOW_HEIGHT as f32) * 2.0;
+        p1.1 = 1.0 - (p1.1 / WINDOW_HEIGHT as f32) * 2.0;
+        p2.1 = 1.0 - (p2.1 / WINDOW_HEIGHT as f32) * 2.0;
+        p3.1 = 1.0 - (p3.1 / WINDOW_HEIGHT as f32) * 2.0;
+
         self.vertices.extend_from_slice(
             &[
                 // Upper left triangle (CW winding)
-                screen_left, screen_top, atlas_left, atlas_top, // 0
-                screen_right, screen_top, atlas_right, atlas_top, // 1
-                screen_left, screen_bottom, atlas_left, atlas_bottom, // 2
+                p0.0, p0.1, atlas_left, atlas_top, // 0
+                p1.0, p1.1, atlas_right, atlas_top, // 1
+                p2.0, p2.1, atlas_left, atlas_bottom, // 2
                 // Lower right triangle
-                screen_right, screen_top, atlas_right, atlas_top, // 1
-                screen_right, screen_bottom, atlas_right, atlas_bottom, // 3
-                screen_left, screen_bottom, atlas_left, atlas_bottom, // 2
+                p1.0, p1.1, atlas_right, atlas_top, // 1
+                p3.0, p3.1, atlas_right, atlas_bottom, // 3
+                p2.0, p2.1, atlas_left, atlas_bottom, // 2
             ]
         );
     }

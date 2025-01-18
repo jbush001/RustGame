@@ -27,6 +27,7 @@ fn main() {
     let mut y: i32 = 0;
     let mut xdir: i32 = 1;
     let mut ydir: i32 = 1;
+    let mut rot: f32 = 0.0;
 
     'main: loop {
         for event in event_pump.poll_iter() {
@@ -38,14 +39,15 @@ fn main() {
 
         x += xdir * 5;
         y += ydir * 5;
-        if x > (gfx::WINDOW_WIDTH - gfx::SPRITE_0.4) as i32 || x < 0 {
+        if x > gfx::WINDOW_WIDTH as i32 || x < 0 {
             xdir = -xdir;
         }
 
-        if y > (gfx::WINDOW_HEIGHT - gfx::SPRITE_0.5) as i32 || y < 0 {
+        if y > gfx::WINDOW_HEIGHT as i32 || y < 0 {
             ydir = -ydir;
         }
-        context.draw_image(x, y, &gfx::SPRITE_0);
+        context.draw_image((x, y), &gfx::SPRITE_0, rot, (gfx::SPRITE_0.4 as i32/ 2, gfx::SPRITE_0.5 as i32 / 2));
+        rot += 0.02;
         context.render();
     }
 }
