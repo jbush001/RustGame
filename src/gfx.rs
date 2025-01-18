@@ -139,8 +139,12 @@ fn rotate(point: &(f32, f32), matrix: &(f32, f32, f32, f32)) -> (f32, f32) {
 impl RenderContext {
     pub fn new(sdl: &mut sdl2::Sdl) -> Result<Self, String> {
         let video_subsystem = sdl.video().unwrap();
+
+        // Note: doubling resolutions here because SDL seems
+        // to be halving them on my system. I think it's some
+        // kind of high-DPI thing.
         let window = video_subsystem
-            .window("Game", WINDOW_WIDTH, WINDOW_HEIGHT)
+            .window("Game", WINDOW_WIDTH * 2, WINDOW_HEIGHT * 2)
             .opengl()
             .build()
             .unwrap();
@@ -199,7 +203,7 @@ impl RenderContext {
     ) {
         let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = image_info.clone();
 
-        // Images are square. We compose them of two adjacent triangles, with four
+        // Images are square. We compose them of two abutting triangles, with four
         // vertices:
         // 0      1
         // +------+
@@ -216,6 +220,7 @@ impl RenderContext {
         let bottom = top + height as f32;
 
         let (mut p0, mut p1, mut p2, mut p3) = if rotation == 0.0 {
+            // Fast path if there is no rotation
             ((left, top), (right, top), (left, bottom), (right, bottom))
         } else {
             let crot = f32::cos(rotation);
@@ -233,24 +238,19 @@ impl RenderContext {
             )
         };
 
-        p0.0 += position.0 as f32;
-        p1.0 += position.0 as f32;
-        p2.0 += position.0 as f32;
-        p3.0 += position.0 as f32;
-        p0.1 += position.1 as f32;
-        p1.1 += position.1 as f32;
-        p2.1 += position.1 as f32;
-        p3.1 += position.1 as f32;
+        // Convert from pixel coordinates to OpenGL coordinate space.
+        #[inline]
+        fn to_ogl_coord(pt: &(f32, f32), position: &(i32, i32)) -> (f32, f32) {
+            (
+                ((pt.0 + position.0 as f32) / WINDOW_WIDTH as f32) * 2.0 - 1.0,
+                1.0 - ((pt.1 + position.1 as f32) / WINDOW_HEIGHT as f32) * 2.0
+            )
+        }
 
-        // Convert to OpenGL screen space
-        p0.0 = (p0.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
-        p1.0 = (p1.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
-        p2.0 = (p2.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
-        p3.0 = (p3.0 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
-        p0.1 = 1.0 - (p0.1 / WINDOW_HEIGHT as f32) * 2.0;
-        p1.1 = 1.0 - (p1.1 / WINDOW_HEIGHT as f32) * 2.0;
-        p2.1 = 1.0 - (p2.1 / WINDOW_HEIGHT as f32) * 2.0;
-        p3.1 = 1.0 - (p3.1 / WINDOW_HEIGHT as f32) * 2.0;
+        p0 = to_ogl_coord(&p0, &position);
+        p1 = to_ogl_coord(&p1, &position);
+        p2 = to_ogl_coord(&p2, &position);
+        p3 = to_ogl_coord(&p3, &position);
 
         self.vertices.extend_from_slice(
             &[
