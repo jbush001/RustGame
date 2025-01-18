@@ -1,0 +1,1 @@
+SPRITE_0 test-image.png

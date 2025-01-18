@@ -18,6 +18,8 @@ use gl;
 use sdl2;
 use image::ImageReader;
 
+include!(concat!(env!("OUT_DIR"), "/assets.rs"));
+
 pub struct RenderContext {
     window: sdl2::video::Window,
     _gl_context: sdl2::video::GLContext,
@@ -96,7 +98,12 @@ impl RenderContext {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
         }
 
-        let img = ImageReader::open("test-image.png");
+        // Find out which directory this executable is located in
+        let exe_path = std::env::current_exe().unwrap();
+        let exe_dir = exe_path.parent().unwrap();
+        let atlas_path = exe_dir.join("atlas.png");
+
+        let img = ImageReader::open(atlas_path);
         if let Err(msg) = img {
             panic!("{}", msg);
         }

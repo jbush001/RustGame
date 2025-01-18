@@ -15,12 +15,14 @@
 //
 
 mod gfx;
-
 extern crate sdl2;
+
 
 fn main() {
     let mut sdl = sdl2::init().unwrap();
     let context = gfx::RenderContext::new(&mut sdl).unwrap();
+
+    println!("SPRITE_0 = {:?}", gfx::SPRITE_0);
 
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
