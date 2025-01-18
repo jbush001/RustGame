@@ -14,6 +14,12 @@
 // limitations under the License.
 //
 
+//
+// This runs during build time to take all of the different image files and
+// copy them into a single image (atlas). It also generates a source code
+// file with the coordinates, which will be compiled into the program.
+//
+
 use image::*;
 use std::env;
 use std::fs;
@@ -60,7 +66,9 @@ fn main() {
         a.1.cmp(&b.1)
     });
 
-    // Pack images
+    // Pack images, left to right, top to bottom. There are much more
+    // sophisticated ways to do this that waste less space, but this
+    // is fairly simple and does an okay job.
     const ATLAS_SIZE: u32 = 1024;
     const BORDER_SIZE: u32 = 2;
     let mut atlas = DynamicImage::new_rgba8(ATLAS_SIZE, ATLAS_SIZE);
@@ -94,16 +102,8 @@ fn main() {
 
     let mut file = fs::File::create(&dest_path).unwrap();
     for (name, coords) in image_coordinates.iter() {
-
-        // (0,1)      (1,1)
-        // +--------------+
-        // |              |
-        // |              |
-        // |              |
-        // |              |
-        // |              |
-        // +--------------+
-        // (0,0)      (1,0)
+        // The tuple contains left, top, right, bottom in texture coordinate
+        // space, width and height in pixels.
         writeln!(file, "pub const {}: (f32, f32, f32, f32, u32, u32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
             name,
             coords.0 as f32 / ATLAS_SIZE as f32,

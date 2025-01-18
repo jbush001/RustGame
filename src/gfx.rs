@@ -18,6 +18,8 @@ use gl;
 use sdl2;
 use image::ImageReader;
 
+// Load all constants pointing to individual images from the texture atlas,
+// which is generated during the build process.
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
 pub const WINDOW_WIDTH: u32 = 900;
@@ -28,7 +30,7 @@ pub struct RenderContext {
     _gl_context: sdl2::video::GLContext,
     vbo: gl::types::GLuint,
     shader_program: gl::types::GLuint,
-    image_atlas: gl::types::GLuint,
+    atlas_texture_id: gl::types::GLuint,
     atlas_width: u32,
     atlas_height: u32,
     vertices: Vec<f32>,
@@ -70,6 +72,61 @@ fn check_gl_error() {
     }
 }
 
+// We use a single texture atlas with all images to avoid state changes during
+// rendering.
+fn init_texture_atlas() -> (gl::types::GLuint, u32, u32) {
+    // The atlas file is copied into the same directory as our executable.
+    let exe_path = std::env::current_exe().unwrap();
+    let exe_dir = exe_path.parent().unwrap();
+    let atlas_path = exe_dir.join("atlas.png");
+
+    let img = ImageReader::open(atlas_path);
+    if let Err(msg) = img {
+        panic!("{}", msg);
+    }
+
+    let decode_result = img.unwrap().decode();
+    if let Err(msg) = decode_result {
+        panic!("{}", msg);
+    }
+
+    let decoded = decode_result.unwrap();
+    let atlas_width = decoded.width();
+    let atlas_height = decoded.height();
+
+    let binding = decoded.into_rgba8();
+    let raster_data = binding.as_raw();
+
+    unsafe {
+        let mut atlas_texture_id: gl::types::GLuint = 0;
+        gl::Enable(gl::TEXTURE_2D);
+        gl::GenTextures(1, &mut atlas_texture_id);
+
+        gl::ActiveTexture(gl::TEXTURE0);
+        gl::BindTexture(gl::TEXTURE_2D, atlas_texture_id);
+
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA as i32,
+            atlas_width as i32,
+            atlas_height as i32,
+            0,
+            gl::RGBA as u32,
+            gl::UNSIGNED_BYTE,
+            raster_data.as_ptr() as *const _,
+        );
+
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+        check_gl_error();
+
+        (atlas_texture_id, atlas_width, atlas_height)
+    }
+}
+
 impl RenderContext {
     pub fn new(sdl: &mut sdl2::Sdl) -> Result<Self, String> {
         let video_subsystem = sdl.video().unwrap();
@@ -104,62 +161,14 @@ impl RenderContext {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
         }
 
-        // Find out which directory this executable is located in
-        let exe_path = std::env::current_exe().unwrap();
-        let exe_dir = exe_path.parent().unwrap();
-        let atlas_path = exe_dir.join("atlas.png");
+        let (atlas_texture_id, atlas_width, atlas_height) = init_texture_atlas();
 
-        let img = ImageReader::open(atlas_path);
-        if let Err(msg) = img {
-            panic!("{}", msg);
-        }
-
-        let decode_result = img.unwrap().decode();
-        if let Err(msg) = decode_result {
-            panic!("{}", msg);
-        }
-
-        let decoded = decode_result.unwrap();
-        let atlas_width = decoded.width();
-        let atlas_height = decoded.height();
-
-        let binding = decoded.into_rgba8();
-        let raster_data = binding.as_raw();
-
-        let image_atlas = unsafe {
-            let mut image_atlas: gl::types::GLuint = 0;
-            gl::Enable(gl::TEXTURE_2D);
-            check_gl_error();
-            gl::GenTextures(1, &mut image_atlas);
-            check_gl_error();
-
-            gl::ActiveTexture(gl::TEXTURE0);
-            gl::BindTexture(gl::TEXTURE_2D, image_atlas);
-
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA as i32,
-                atlas_width as i32,
-                atlas_height as i32,
-                0,
-                gl::RGBA as u32,
-                gl::UNSIGNED_BYTE,
-                raster_data.as_ptr() as *const _,
-            );
-
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-
-
+        unsafe  {
+            // Assign texture unit
             let image_attr = gl::GetUniformLocation(program, "texture0\0".as_ptr().cast());
             assert!(image_attr != -1);
             gl::Uniform1i(image_attr, 0);
-
-            image_atlas
-        };
+        }
 
         check_gl_error();
 
@@ -168,13 +177,14 @@ impl RenderContext {
             _gl_context: gl_context,
             vbo,
             shader_program: program,
-            image_atlas,
+            atlas_texture_id,
             vertices: Vec::new(),
             atlas_width,
             atlas_height,
         })
     }
 
+    // Add an image to the display list.
     pub fn draw_image(&mut self, x: i32, y: i32, image_info: &(f32, f32, f32, f32, u32, u32)) {
         let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = image_info.clone();
 
@@ -192,43 +202,18 @@ impl RenderContext {
         // +------+
         // 2      3
 
-        // Upper left triangle (CW winding)
-        // 0
-        self.vertices.push(screen_left);
-        self.vertices.push(screen_top);
-        self.vertices.push(atlas_left);
-        self.vertices.push(atlas_top);
-
-        // 1
-        self.vertices.push(screen_right);
-        self.vertices.push(screen_top);
-        self.vertices.push(atlas_right);
-        self.vertices.push(atlas_top);
-
-        // 2
-        self.vertices.push(screen_left);
-        self.vertices.push(screen_bottom);
-        self.vertices.push(atlas_left);
-        self.vertices.push(atlas_bottom);
-
-        // Lower right triangle
-        // 1
-        self.vertices.push(screen_right);
-        self.vertices.push(screen_top);
-        self.vertices.push(atlas_right);
-        self.vertices.push(atlas_top);
-
-        // 3
-        self.vertices.push(screen_right);
-        self.vertices.push(screen_bottom);
-        self.vertices.push(atlas_right);
-        self.vertices.push(atlas_bottom);
-
-        // 2
-        self.vertices.push(screen_left);
-        self.vertices.push(screen_bottom);
-        self.vertices.push(atlas_left);
-        self.vertices.push(atlas_bottom);
+        self.vertices.extend_from_slice(
+            &[
+                // Upper left triangle (CW winding)
+                screen_left, screen_top, atlas_left, atlas_top, // 0
+                screen_right, screen_top, atlas_right, atlas_top, // 1
+                screen_left, screen_bottom, atlas_left, atlas_bottom, // 2
+                // Lower right triangle
+                screen_right, screen_top, atlas_right, atlas_top, // 1
+                screen_right, screen_bottom, atlas_right, atlas_bottom, // 3
+                screen_left, screen_bottom, atlas_left, atlas_bottom, // 2
+            ]
+        );
     }
 
     pub fn render(&mut self) {
@@ -240,10 +225,10 @@ impl RenderContext {
                 gl::ARRAY_BUFFER,
                 (self.vertices.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
                 self.vertices.as_ptr().cast(),
-                gl::STATIC_DRAW,
+                gl::STREAM_DRAW,
             );
 
-            gl::BindTexture(gl::TEXTURE_2D, self.image_atlas);
+            gl::BindTexture(gl::TEXTURE_2D, self.atlas_texture_id);
             gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
 
             // Screen coordinate attribute
