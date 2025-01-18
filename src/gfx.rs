@@ -20,12 +20,18 @@ use image::ImageReader;
 
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
+pub const WINDOW_WIDTH: u32 = 900;
+pub const WINDOW_HEIGHT: u32 = 700;
+
 pub struct RenderContext {
     window: sdl2::video::Window,
     _gl_context: sdl2::video::GLContext,
     vbo: gl::types::GLuint,
     shader_program: gl::types::GLuint,
     image_atlas: gl::types::GLuint,
+    atlas_width: u32,
+    atlas_height: u32,
+    vertices: Vec<f32>,
 }
 
 const VERTEX_SHADER: &str = r#"
@@ -68,7 +74,7 @@ impl RenderContext {
     pub fn new(sdl: &mut sdl2::Sdl) -> Result<Self, String> {
         let video_subsystem = sdl.video().unwrap();
         let window = video_subsystem
-            .window("Game", 900, 700)
+            .window("Game", WINDOW_WIDTH, WINDOW_HEIGHT)
             .opengl()
             .resizable()
             .build()
@@ -114,8 +120,8 @@ impl RenderContext {
         }
 
         let decoded = decode_result.unwrap();
-        let width = decoded.width();
-        let height = decoded.height();
+        let atlas_width = decoded.width();
+        let atlas_height = decoded.height();
 
         let binding = decoded.into_rgba8();
         let raster_data = binding.as_raw();
@@ -130,14 +136,12 @@ impl RenderContext {
             gl::ActiveTexture(gl::TEXTURE0);
             gl::BindTexture(gl::TEXTURE_2D, image_atlas);
 
-            println!("Width: {}, Height: {}", width, height);
-
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
                 gl::RGBA as i32,
-                width as i32,
-                height as i32,
+                atlas_width as i32,
+                atlas_height as i32,
                 0,
                 gl::RGBA as u32,
                 gl::UNSIGNED_BYTE,
@@ -146,6 +150,9 @@ impl RenderContext {
 
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+
 
             let image_attr = gl::GetUniformLocation(program, "texture0\0".as_ptr().cast());
             assert!(image_attr != -1);
@@ -162,23 +169,77 @@ impl RenderContext {
             vbo,
             shader_program: program,
             image_atlas,
+            vertices: Vec::new(),
+            atlas_width,
+            atlas_height,
         })
     }
 
-    pub fn render(&self) {
+    pub fn draw_image(&mut self, x: i32, y: i32, image_info: &(f32, f32, f32, f32, u32, u32)) {
+        let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = image_info.clone();
+
+        let screen_left = (x as f32 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
+        let screen_top = 1.0 - (y as f32 / WINDOW_HEIGHT as f32) * 2.0;
+        let screen_right = ((x + width as i32) as f32 / WINDOW_WIDTH as f32) * 2.0 - 1.0;
+        let screen_bottom = 1.0 - ((y + height as i32) as f32 / WINDOW_HEIGHT as f32) * 2.0;
+
+        // 0      1
+        // +------+
+        // |    / |
+        // |   /  |
+        // |  /   |
+        // | /    |
+        // +------+
+        // 2      3
+
+        // Upper left triangle (CW winding)
+        // 0
+        self.vertices.push(screen_left);
+        self.vertices.push(screen_top);
+        self.vertices.push(atlas_left);
+        self.vertices.push(atlas_top);
+
+        // 1
+        self.vertices.push(screen_right);
+        self.vertices.push(screen_top);
+        self.vertices.push(atlas_right);
+        self.vertices.push(atlas_top);
+
+        // 2
+        self.vertices.push(screen_left);
+        self.vertices.push(screen_bottom);
+        self.vertices.push(atlas_left);
+        self.vertices.push(atlas_bottom);
+
+        // Lower right triangle
+        // 1
+        self.vertices.push(screen_right);
+        self.vertices.push(screen_top);
+        self.vertices.push(atlas_right);
+        self.vertices.push(atlas_top);
+
+        // 3
+        self.vertices.push(screen_right);
+        self.vertices.push(screen_bottom);
+        self.vertices.push(atlas_right);
+        self.vertices.push(atlas_bottom);
+
+        // 2
+        self.vertices.push(screen_left);
+        self.vertices.push(screen_bottom);
+        self.vertices.push(atlas_left);
+        self.vertices.push(atlas_bottom);
+    }
+
+    pub fn render(&mut self) {
+        const ATTRIBS_PER_VERTEX: usize = 4;
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT);
-            let vertices: [f32; 12] = [
-                -0.5, -0.5, 0.0, 0.0,
-                0.5, -0.5, 1.0, 0.0,
-                0.0, 0.5, 0.5, 1.0,
-            ];
 
-            gl::UseProgram(self.shader_program);
             gl::BufferData(
                 gl::ARRAY_BUFFER,
-                (vertices.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
-                vertices.as_ptr().cast(),
+                (self.vertices.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
+                self.vertices.as_ptr().cast(),
                 gl::STATIC_DRAW,
             );
 
@@ -187,31 +248,33 @@ impl RenderContext {
 
             // Screen coordinate attribute
             gl::VertexAttribPointer(
-                0,
-                2,
+                0, // Input index
+                2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
-                (4 * std::mem::size_of::<f32>()) as gl::types::GLint,
+                (ATTRIBS_PER_VERTEX * std::mem::size_of::<f32>()) as gl::types::GLint,
                 std::ptr::null(),
             );
 
             // Texture coordinate attribute
             gl::VertexAttribPointer(
-                1,
-                2,
+                1, // Input index
+                2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
-                (4 * std::mem::size_of::<f32>()) as gl::types::GLint,
+                (ATTRIBS_PER_VERTEX * std::mem::size_of::<f32>()) as gl::types::GLint,
                 std::ptr::null::<f32>().add(2).cast(), // Offset into packed array.
             );
 
             gl::EnableVertexAttribArray(0);
             gl::EnableVertexAttribArray(1);
-            gl::DrawArrays(gl::TRIANGLES, 0, 3);
+            gl::DrawArrays(gl::TRIANGLES, 0, (self.vertices.len() / ATTRIBS_PER_VERTEX as usize) as i32);
             check_gl_error();
         }
 
         self.window.gl_swap_window();
+
+        self.vertices.clear();
     }
 }
 

@@ -20,11 +20,14 @@ extern crate sdl2;
 
 fn main() {
     let mut sdl = sdl2::init().unwrap();
-    let context = gfx::RenderContext::new(&mut sdl).unwrap();
-
-    println!("SPRITE_0 = {:?}", gfx::SPRITE_0);
+    let mut context = gfx::RenderContext::new(&mut sdl).unwrap();
 
     let mut event_pump = sdl.event_pump().unwrap();
+    let mut x: i32 = 0;
+    let mut y: i32 = 0;
+    let mut xdir: i32 = 1;
+    let mut ydir: i32 = 1;
+
     'main: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -33,6 +36,16 @@ fn main() {
             }
         }
 
+        x += xdir * 5;
+        y += ydir * 5;
+        if x > (gfx::WINDOW_WIDTH - gfx::SPRITE_0.4) as i32 || x < 0 {
+            xdir = -xdir;
+        }
+
+        if y > (gfx::WINDOW_HEIGHT - gfx::SPRITE_0.5) as i32 || y < 0 {
+            ydir = -ydir;
+        }
+        context.draw_image(x, y, &gfx::SPRITE_0);
         context.render();
     }
 }

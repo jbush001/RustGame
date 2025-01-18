@@ -62,15 +62,16 @@ fn main() {
 
     // Pack images
     const ATLAS_SIZE: u32 = 1024;
+    const BORDER_SIZE: u32 = 2;
     let mut atlas = DynamicImage::new_rgba8(ATLAS_SIZE, ATLAS_SIZE);
-    let mut image_coordinates: Vec<(String, (f32, f32, f32, f32))> = Vec::new();
-    let mut x = 0;
-    let mut y = 0;
+    let mut image_coordinates: Vec<(String, (u32, u32, u32, u32))> = Vec::new();
+    let mut x = BORDER_SIZE;
+    let mut y = BORDER_SIZE;
     let mut row_height = images[0].1.height();
     for (name, img) in images.iter() {
         if x + img.width() > atlas.width() {
-            x = 0;
-            y += row_height;
+            x = BORDER_SIZE;
+            y += row_height + BORDER_SIZE;
             // Because these are sorted by row height, we know none of the subsequent
             // images in the row will be larger.
             row_height = img.height();
@@ -81,13 +82,8 @@ fn main() {
         }
 
         let _ = atlas.copy_from(img, x, y);
-        image_coordinates.push((name.clone(),
-            (x as f32 / ATLAS_SIZE as f32,
-            y as f32 / ATLAS_SIZE as f32,
-            (x + img.width()) as f32 / ATLAS_SIZE as f32,
-            (y + img.height()) as f32 / ATLAS_SIZE as f32)));
-
-        x += img.width();
+        image_coordinates.push((name.clone(), (x, y, img.width(), img.height())));
+        x += img.width() + BORDER_SIZE;
     }
 
     // Write out a rust file with all of the locations. This will be linked
@@ -98,9 +94,25 @@ fn main() {
 
     let mut file = fs::File::create(&dest_path).unwrap();
     for (name, coords) in image_coordinates.iter() {
-        writeln!(file, "pub const {}: (f32, f32, f32, f32) = ({:?}, {:?}, {:?}, {:?});",
+
+        // (0,1)      (1,1)
+        // +--------------+
+        // |              |
+        // |              |
+        // |              |
+        // |              |
+        // |              |
+        // +--------------+
+        // (0,0)      (1,0)
+        writeln!(file, "pub const {}: (f32, f32, f32, f32, u32, u32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
             name,
-            coords.0, coords.1, coords.2, coords.3).unwrap();
+            coords.0 as f32 / ATLAS_SIZE as f32,
+            coords.1 as f32 / ATLAS_SIZE as f32,
+            (coords.0 + coords.2) as f32 / ATLAS_SIZE as f32,
+            (coords.1 + coords.3) as f32 / ATLAS_SIZE as f32,
+            coords.2,
+            coords.3,
+        ).unwrap();
     }
 
     // Write out the new atlas image.
