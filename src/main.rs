@@ -15,68 +15,16 @@
 //
 
 mod gfx;
+mod entity;
 extern crate sdl2;
-
-struct Arrow {
-    xpos: f32,
-    ypos: f32,
-    xvec: f32,
-    yvec: f32,
-    angle: f32,
-    active: bool,
-}
-
-impl Arrow {
-    fn new() -> Arrow {
-        Arrow {
-            xpos: 0.0,
-            ypos: 0.0,
-            xvec: 0.0,
-            yvec: 0.0,
-            angle: 0.0,
-            active: false,
-        }
-    }
-
-    fn update(&mut self, d_t: f32) {
-        if !self.active {
-            return;
-        }
-
-        self.xpos += self.xvec * d_t;
-        self.ypos += self.yvec * d_t;
-        self.angle = self.yvec.atan2(self.xvec);
-        self.yvec += 400.0 * d_t;
-
-        if self.ypos > gfx::WINDOW_HEIGHT as f32
-            || self.xpos < 0.0
-            || self.xpos > gfx::WINDOW_WIDTH as f32
-        {
-            self.active = false;
-        }
-    }
-
-    fn draw(&mut self, context: &mut gfx::RenderContext) {
-        if !self.active {
-            return;
-        }
-
-        context.draw_image(
-            (self.xpos as i32, self.ypos as i32),
-            &gfx::SPR_ARROW,
-            self.angle,
-            (gfx::SPR_ARROW.4 as i32/ 2, gfx::SPR_ARROW.5 as i32 / 2)
-        );
-    }
-}
-
 
 fn main() {
     let mut sdl = sdl2::init().unwrap();
     let mut context = gfx::RenderContext::new(&mut sdl).unwrap();
 
     let mut event_pump = sdl.event_pump().unwrap();
-    let mut arrows: Vec<Arrow> = Vec::new();
+    let mut entities: Vec<Box<dyn entity::Entity>> = Vec::new();
+
     // start at 45 degrees
     let mut fire_angle: f32 = -std::f32::consts::PI / 4.0;
     const fire_pos_x: f32 = 20.0;
@@ -99,15 +47,9 @@ fn main() {
 
                 sdl2::event::Event::KeyUp { keycode: Some(sdl2::keyboard::Keycode::Space), timestamp, .. } => {
                     let elapsed = (timestamp - bow_draw_time) as f32 / 1000.0;
-                    let velocity = (elapsed.clamp(0.2, 0.3) * 2000.0);
+                    let velocity = elapsed.clamp(0.2, 0.3) * 2000.0;
                     println!("Firing arrow at time {} with velocity: {}", elapsed, velocity);
-                    let mut arrow = Arrow::new();
-                    arrow.active = true;
-                    arrow.xpos = fire_pos_x;
-                    arrow.ypos = fire_pos_y;
-                    arrow.xvec = fire_angle.cos() * velocity;
-                    arrow.yvec = fire_angle.sin() * velocity;
-                    arrows.push(arrow);
+                    entities.push(Box::new(entity::Arrow::new(fire_pos_x, fire_pos_y, fire_angle, velocity)));
                 }
 
                 // Adjust the firing angle with the up and down arrow keys
@@ -131,11 +73,7 @@ fn main() {
             (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2)
         );
 
-        for arrow in arrows.iter_mut() {
-            arrow.update(1.0 / 60.0);
-            arrow.draw(&mut context);
-        }
-
+        entity::do_frame(&mut entities, 1.0 / 60.0, &mut context);
         context.render();
     }
 }
