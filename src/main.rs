@@ -39,7 +39,7 @@ fn main() {
 
                 // When the space key is held, the bow is drawn, when released it is
                 // fired. The duration of hold determines the distance. Record
-                // the time. Grab timestamp from event type. the repeat field should be false.
+                // the time. Note: check if this is a repeat event and ignore if so.
                 sdl2::event::Event::KeyDown { keycode: Some(sdl2::keyboard::Keycode::Space), repeat: false, timestamp, .. } => {
                     println!("Drawing bow at time: {}", timestamp);
                     bow_draw_time = timestamp;
