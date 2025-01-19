@@ -170,7 +170,7 @@ impl RenderContext {
         };
 
         unsafe {
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
         }
 
         let atlas_texture_id = init_texture_atlas();
@@ -180,6 +180,12 @@ impl RenderContext {
             let image_attr = gl::GetUniformLocation(program, "texture0\0".as_ptr().cast());
             assert!(image_attr != -1);
             gl::Uniform1i(image_attr, 0);
+        }
+
+        // Enable source alpha blending
+        unsafe {
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
         check_gl_error();

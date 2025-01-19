@@ -1,1 +1,2 @@
 SPRITE_0 test-image.png
+SPR_ARROW arrow.png
