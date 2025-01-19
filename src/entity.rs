@@ -16,34 +16,14 @@
 
 use crate::gfx;
 
-static mut CONTROL_BITMAP: u32 = 0x0;
-
 pub const CONTROL_UP: u32 = 0x1;
 pub const CONTROL_DOWN: u32 = 0x2;
 pub const CONTROL_LEFT: u32 = 0x4;
 pub const CONTROL_RIGHT: u32 = 0x8;
 pub const CONTROL_FIRE: u32 = 0x10;
 
-pub fn set_control_bitmap(mask: u32) {
-    unsafe {
-        CONTROL_BITMAP |= mask;
-    }
-}
-
-pub fn clear_control_bitmap(mask: u32) {
-    unsafe {
-        CONTROL_BITMAP &= !mask;
-    }
-}
-
-pub fn get_control_bitmap() -> u32 {
-    unsafe {
-        CONTROL_BITMAP
-    }
-}
-
 pub trait Entity {
-    fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>);
+    fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>, buttons: u32);
     fn draw(&mut self, context: &mut gfx::RenderContext);
     fn is_live(&self) -> bool;
 }
@@ -69,7 +49,7 @@ impl Arrow {
 }
 
 impl Entity for Arrow {
-    fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>) {
+    fn update(&mut self, d_t: f32, _new_entities: &mut Vec<Box<dyn Entity>>, _buttons: u32) {
         self.xpos += self.xvec * d_t;
         self.ypos += self.yvec * d_t;
         self.angle = self.yvec.atan2(self.xvec);
@@ -103,7 +83,7 @@ pub struct Player {
 impl Player {
     pub fn new() -> Player {
         Player {
-            angle: -std::f32::consts::PI * 3.0 / 4.0,
+            angle: -std::f32::consts::PI / 4.0,
             pos_x: 20.0,
             pos_y: (gfx::WINDOW_HEIGHT - 20) as f32,
             bow_drawn: false,
@@ -113,8 +93,8 @@ impl Player {
 }
 
 impl Entity for Player {
-    fn update(&mut self, _d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>) {
-        if get_control_bitmap() & CONTROL_FIRE == 0 {
+    fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>, buttons: u32) {
+        if buttons & CONTROL_FIRE == 0 {
             // Button not pressed
             if self.bow_drawn {
                 // It was released
@@ -125,27 +105,27 @@ impl Entity for Player {
         } else {
             // Button pressed
             if self.bow_drawn {
-                self.bow_draw_time += _d_t;
+                self.bow_draw_time += d_t;
             } else {
                 self.bow_drawn = true;
                 self.bow_draw_time = 0.0;
             }
         }
 
-        if get_control_bitmap() & CONTROL_UP != 0 {
-            self.angle -= 0.1;
+        if buttons & CONTROL_UP != 0 && self.angle < 0.0 {
+            self.angle += d_t;
         }
 
-        if get_control_bitmap() & CONTROL_DOWN != 0 {
-            self.angle += 0.1;
+        if buttons & CONTROL_DOWN != 0 && self.angle > -std::f32::consts::PI {
+            self.angle -= d_t;
         }
 
-        if get_control_bitmap() & CONTROL_LEFT != 0 {
-            self.pos_x -= 100.0 * _d_t;
+        if buttons & CONTROL_LEFT != 0 {
+            self.pos_x -= 100.0 * d_t;
         }
 
-        if get_control_bitmap() & CONTROL_RIGHT != 0 {
-            self.pos_x += 100.0 * _d_t;
+        if buttons & CONTROL_RIGHT != 0 {
+            self.pos_x += 100.0 * d_t;
         }
     }
 
@@ -163,10 +143,15 @@ impl Entity for Player {
     }
 }
 
-pub fn do_frame(entities: &mut Vec<Box<dyn Entity>>, d_t: f32, context: &mut gfx::RenderContext) {
+pub fn do_frame(
+    entities: &mut Vec<Box<dyn Entity>>,
+    d_t: f32,
+    context: &mut gfx::RenderContext,
+    buttons: u32,
+) {
     let mut new_entities: Vec<Box<dyn Entity>> = Vec::new();
     for entity in entities.iter_mut() {
-        entity.update(d_t, &mut new_entities);
+        entity.update(d_t, &mut new_entities, buttons);
     }
 
     entities.append(&mut new_entities);

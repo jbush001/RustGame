@@ -14,8 +14,6 @@
 // limitations under the License.
 //
 
-use gl;
-use sdl2;
 use image::ImageReader;
 
 // Load all constants pointing to individual images from the texture atlas,
@@ -109,7 +107,7 @@ fn init_texture_atlas() -> gl::types::GLuint {
             atlas_width as i32,
             atlas_height as i32,
             0,
-            gl::RGBA as u32,
+            gl::RGBA,
             gl::UNSIGNED_BYTE,
             raster_data.as_ptr() as *const _,
         );
@@ -177,7 +175,7 @@ impl RenderContext {
 
         unsafe  {
             // Assign texture unit
-            let image_attr = gl::GetUniformLocation(program, "texture0\0".as_ptr().cast());
+            let image_attr = gl::GetUniformLocation(program, c"texture0".as_ptr().cast());
             assert!(image_attr != -1);
             gl::Uniform1i(image_attr, 0);
         }
@@ -207,7 +205,7 @@ impl RenderContext {
         rotation: f32,
         origin: (i32, i32)
     ) {
-        let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = image_info.clone();
+        let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = *image_info;
 
         // Images are square. We compose them of two abutting triangles, with four
         // vertices:
@@ -309,7 +307,7 @@ impl RenderContext {
 
             gl::EnableVertexAttribArray(0);
             gl::EnableVertexAttribArray(1);
-            gl::DrawArrays(gl::TRIANGLES, 0, (self.vertices.len() / ATTRIBS_PER_VERTEX as usize) as i32);
+            gl::DrawArrays(gl::TRIANGLES, 0, (self.vertices.len() / ATTRIBS_PER_VERTEX) as i32);
             check_gl_error();
         }
 
@@ -319,7 +317,7 @@ impl RenderContext {
     }
 }
 
-fn compile_shader<'a>(shader_type: gl::types::GLuint, source: &str) -> Result<gl::types::GLuint, String> {
+fn compile_shader(shader_type: gl::types::GLuint, source: &str) -> Result<gl::types::GLuint, String> {
     unsafe {
         let shader = gl::CreateShader(shader_type);
         check_gl_error();
@@ -352,9 +350,9 @@ fn compile_shader<'a>(shader_type: gl::types::GLuint, source: &str) -> Result<gl
     }
 }
 
-fn compile_program<'a>(vertex_source: &str, fragment_source: &'a str) -> Result<gl::types::GLuint, String> {
-    let vertex_shader = compile_shader(gl::VERTEX_SHADER, &vertex_source)?;
-    let fragment_shader = compile_shader(gl::FRAGMENT_SHADER, &fragment_source)?;
+fn compile_program(vertex_source: &str, fragment_source: &str) -> Result<gl::types::GLuint, String> {
+    let vertex_shader = compile_shader(gl::VERTEX_SHADER, vertex_source)?;
+    let fragment_shader = compile_shader(gl::FRAGMENT_SHADER, fragment_source)?;
 
     unsafe {
         let program = gl::CreateProgram();

@@ -24,6 +24,7 @@ fn main() {
 
     let mut event_pump = sdl.event_pump().unwrap();
     let mut entities: Vec<Box<dyn entity::Entity>> = Vec::new();
+    let mut buttons: u32 = 0;
 
     entities.push(Box::new(entity::Player::new()));
 
@@ -35,19 +36,19 @@ fn main() {
                 sdl2::event::Event::KeyDown { keycode: Some(keycode), repeat: false, .. } => {
                     match keycode {
                         sdl2::keyboard::Keycode::Space => {
-                            entity::set_control_bitmap(entity::CONTROL_FIRE);
+                            buttons |= entity::CONTROL_FIRE;
                         }
                         sdl2::keyboard::Keycode::Up => {
-                            entity::set_control_bitmap(entity::CONTROL_UP);
+                            buttons |= entity::CONTROL_UP;
                         }
                         sdl2::keyboard::Keycode::Down => {
-                            entity::set_control_bitmap(entity::CONTROL_DOWN);
+                            buttons |= entity::CONTROL_DOWN;
                         }
                         sdl2::keyboard::Keycode::Left => {
-                            entity::set_control_bitmap(entity::CONTROL_LEFT);
+                            buttons |= entity::CONTROL_LEFT;
                         }
                         sdl2::keyboard::Keycode::Right => {
-                            entity::set_control_bitmap(entity::CONTROL_RIGHT);
+                            buttons |= entity::CONTROL_RIGHT;
                         }
                         _ => {},
                     }
@@ -56,19 +57,19 @@ fn main() {
                 sdl2::event::Event::KeyUp { keycode: Some(keycode), .. } => {
                     match keycode {
                         sdl2::keyboard::Keycode::Space => {
-                            entity::clear_control_bitmap(entity::CONTROL_FIRE);
+                            buttons &= !entity::CONTROL_FIRE;
                         }
                         sdl2::keyboard::Keycode::Up => {
-                            entity::clear_control_bitmap(entity::CONTROL_UP);
+                            buttons &= !entity::CONTROL_UP;
                         }
                         sdl2::keyboard::Keycode::Down => {
-                            entity::clear_control_bitmap(entity::CONTROL_DOWN);
+                            buttons &= !entity::CONTROL_DOWN;
                         }
                         sdl2::keyboard::Keycode::Left => {
-                            entity::clear_control_bitmap(entity::CONTROL_LEFT);
+                            buttons &= !entity::CONTROL_LEFT;
                         }
                         sdl2::keyboard::Keycode::Right => {
-                            entity::clear_control_bitmap(entity::CONTROL_RIGHT);
+                            buttons &= !entity::CONTROL_RIGHT;
                         }
                         _ => {},
                     }
@@ -78,7 +79,7 @@ fn main() {
             }
         }
 
-        entity::do_frame(&mut entities, 1.0 / 60.0, &mut context);
+        entity::do_frame(&mut entities, 1.0 / 60.0, &mut context, buttons);
         context.render();
     }
 }
