@@ -25,53 +25,58 @@ fn main() {
     let mut event_pump = sdl.event_pump().unwrap();
     let mut entities: Vec<Box<dyn entity::Entity>> = Vec::new();
 
-    // start at 45 degrees
-    let mut fire_angle: f32 = -std::f32::consts::PI / 4.0;
-    const fire_pos_x: f32 = 20.0;
-    const fire_pos_y: f32 = (gfx::WINDOW_HEIGHT - 10) as f32;
-
-    let mut bow_draw_time: u32 = 0;
+    entities.push(Box::new(entity::Player::new()));
 
     'main: loop {
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit {..} => break 'main,
 
-                // When the space key is held, the bow is drawn, when released it is
-                // fired. The duration of hold determines the distance. Record
-                // the time. Note: check if this is a repeat event and ignore if so.
-                sdl2::event::Event::KeyDown { keycode: Some(sdl2::keyboard::Keycode::Space), repeat: false, timestamp, .. } => {
-                    println!("Drawing bow at time: {}", timestamp);
-                    bow_draw_time = timestamp;
+                sdl2::event::Event::KeyDown { keycode: Some(keycode), repeat: false, .. } => {
+                    match keycode {
+                        sdl2::keyboard::Keycode::Space => {
+                            entity::set_control_bitmap(entity::CONTROL_FIRE);
+                        }
+                        sdl2::keyboard::Keycode::Up => {
+                            entity::set_control_bitmap(entity::CONTROL_UP);
+                        }
+                        sdl2::keyboard::Keycode::Down => {
+                            entity::set_control_bitmap(entity::CONTROL_DOWN);
+                        }
+                        sdl2::keyboard::Keycode::Left => {
+                            entity::set_control_bitmap(entity::CONTROL_LEFT);
+                        }
+                        sdl2::keyboard::Keycode::Right => {
+                            entity::set_control_bitmap(entity::CONTROL_RIGHT);
+                        }
+                        _ => {},
+                    }
                 }
 
-                sdl2::event::Event::KeyUp { keycode: Some(sdl2::keyboard::Keycode::Space), timestamp, .. } => {
-                    let elapsed = (timestamp - bow_draw_time) as f32 / 1000.0;
-                    let velocity = elapsed.clamp(0.2, 0.3) * 2000.0;
-                    println!("Firing arrow at time {} with velocity: {}", elapsed, velocity);
-                    entities.push(Box::new(entity::Arrow::new(fire_pos_x, fire_pos_y, fire_angle, velocity)));
-                }
-
-                // Adjust the firing angle with the up and down arrow keys
-                sdl2::event::Event::KeyDown { keycode: Some(sdl2::keyboard::Keycode::Up), .. } => {
-                    fire_angle -= 0.1;
-                }
-
-                sdl2::event::Event::KeyDown { keycode: Some(sdl2::keyboard::Keycode::Down), .. } => {
-                    fire_angle += 0.1;
+                sdl2::event::Event::KeyUp { keycode: Some(keycode), .. } => {
+                    match keycode {
+                        sdl2::keyboard::Keycode::Space => {
+                            entity::clear_control_bitmap(entity::CONTROL_FIRE);
+                        }
+                        sdl2::keyboard::Keycode::Up => {
+                            entity::clear_control_bitmap(entity::CONTROL_UP);
+                        }
+                        sdl2::keyboard::Keycode::Down => {
+                            entity::clear_control_bitmap(entity::CONTROL_DOWN);
+                        }
+                        sdl2::keyboard::Keycode::Left => {
+                            entity::clear_control_bitmap(entity::CONTROL_LEFT);
+                        }
+                        sdl2::keyboard::Keycode::Right => {
+                            entity::clear_control_bitmap(entity::CONTROL_RIGHT);
+                        }
+                        _ => {},
+                    }
                 }
 
                 _ => {},
             }
         }
-
-        // Draw an arrow to show angle
-        context.draw_image(
-            (fire_pos_x as i32, fire_pos_y as i32),
-            &gfx::SPR_ARROW,
-            fire_angle,
-            (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2)
-        );
 
         entity::do_frame(&mut entities, 1.0 / 60.0, &mut context);
         context.render();
