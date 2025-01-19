@@ -251,33 +251,16 @@ impl RenderContext {
         p2 = to_ogl_coord(&p2, &position);
         p3 = to_ogl_coord(&p3, &position);
 
+        #[cfg_attr(any(), rustfmt::skip)]
         self.vertices.extend_from_slice(&[
             // Upper left triangle (CW winding)
-            p0.0,
-            p0.1,
-            atlas_left,
-            atlas_top, // 0
-            p1.0,
-            p1.1,
-            atlas_right,
-            atlas_top, // 1
-            p2.0,
-            p2.1,
-            atlas_left,
-            atlas_bottom, // 2
+            p0.0, p0.1, atlas_left, atlas_top, // 0
+            p1.0, p1.1, atlas_right, atlas_top, // 1
+            p2.0, p2.1, atlas_left, atlas_bottom, // 2
             // Lower right triangle
-            p1.0,
-            p1.1,
-            atlas_right,
-            atlas_top, // 1
-            p3.0,
-            p3.1,
-            atlas_right,
-            atlas_bottom, // 3
-            p2.0,
-            p2.1,
-            atlas_left,
-            atlas_bottom, // 2
+            p1.0, p1.1, atlas_right, atlas_top, // 1
+            p3.0, p3.1, atlas_right, atlas_bottom, // 3
+            p2.0, p2.1, atlas_left, atlas_bottom, // 2
         ]);
     }
 
