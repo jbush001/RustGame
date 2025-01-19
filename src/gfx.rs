@@ -202,8 +202,13 @@ impl RenderContext {
         image_info: &(f32, f32, f32, f32, u32, u32),
         rotation: f32,
         origin: (i32, i32),
+        flip_h: bool,
     ) {
-        let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = *image_info;
+        let (mut atlas_left, atlas_top, mut atlas_right, atlas_bottom, width, height) = *image_info;
+
+        if flip_h {
+            std::mem::swap(&mut atlas_left, &mut atlas_right);
+        }
 
         // Images are square. We compose them of two abutting triangles, with four
         // vertices:
@@ -216,24 +221,29 @@ impl RenderContext {
         // +------+
         // 2      3
 
-        let left = -origin.0 as f32;
-        let top = -origin.1 as f32;
-        let right = left + width as f32;
-        let bottom = top + height as f32;
+        let display_left = -origin.0 as f32;
+        let display_top = -origin.1 as f32;
+        let display_right = display_left + width as f32;
+        let display_bottom = display_top + height as f32;
 
         let (mut p0, mut p1, mut p2, mut p3) = if rotation == 0.0 {
             // Fast path if there is no rotation
-            ((left, top), (right, top), (left, bottom), (right, bottom))
+            (
+                (display_left, display_top),
+                (display_right, display_top),
+                (display_left, display_bottom),
+                (display_right, display_bottom)
+            )
         } else {
             let crot = f32::cos(rotation);
             let srot = f32::sin(rotation);
             let rotmat = (crot, -srot, srot, crot);
 
             (
-                rotate(&(left, top), &rotmat),
-                rotate(&(right, top), &rotmat),
-                rotate(&(left, bottom), &rotmat),
-                rotate(&(right, bottom), &rotmat),
+                rotate(&(display_left, display_top), &rotmat),
+                rotate(&(display_right, display_top), &rotmat),
+                rotate(&(display_left, display_bottom), &rotmat),
+                rotate(&(display_right, display_bottom), &rotmat),
             )
         };
 

@@ -62,6 +62,7 @@ impl Entity for Arrow {
             &gfx::SPR_ARROW,
             self.angle,
             (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2),
+            false,
         );
     }
 
@@ -78,6 +79,7 @@ pub struct Player {
     pos_y: f32,
     bow_drawn: bool,
     bow_draw_time: f32,
+    facing_left: bool,
 }
 
 impl Player {
@@ -85,9 +87,10 @@ impl Player {
         Player {
             angle: -std::f32::consts::PI / 4.0,
             pos_x: 20.0,
-            pos_y: (gfx::WINDOW_HEIGHT - 20) as f32,
+            pos_y: (gfx::WINDOW_HEIGHT - 32) as f32,
             bow_drawn: false,
             bow_draw_time: 0.0,
+            facing_left: false,
         }
     }
 }
@@ -99,8 +102,13 @@ impl Entity for Player {
             if self.bow_drawn {
                 // It was released
                 let velocity = self.bow_draw_time.clamp(0.2, 0.4) * 2000.0;
+                let arrow_angle = if self.facing_left {
+                    std::f32::consts::PI - self.angle
+                } else {
+                    self.angle
+                };
                 new_entities.push(Box::new(Arrow::new(
-                    self.pos_x, self.pos_y, self.angle, velocity,
+                    self.pos_x, self.pos_y, arrow_angle, velocity,
                 )));
                 self.bow_drawn = false;
             }
@@ -114,20 +122,22 @@ impl Entity for Player {
             }
         }
 
-        if buttons & CONTROL_UP != 0 && self.angle < 0.0 {
-            self.angle += d_t;
+        if buttons & CONTROL_UP != 0 && self.angle > -std::f32::consts::PI / 2.0 {
+            self.angle -= d_t * std::f32::consts::PI;
         }
 
-        if buttons & CONTROL_DOWN != 0 && self.angle > -std::f32::consts::PI {
-            self.angle -= d_t;
+        if buttons & CONTROL_DOWN != 0 && self.angle < std::f32::consts::PI / 2.0 {
+            self.angle += d_t * std::f32::consts::PI;
         }
 
         if buttons & CONTROL_LEFT != 0 {
             self.pos_x -= 100.0 * d_t;
+            self.facing_left = true;
         }
 
         if buttons & CONTROL_RIGHT != 0 {
             self.pos_x += 100.0 * d_t;
+            self.facing_left = false;
         }
     }
 
@@ -141,8 +151,9 @@ impl Entity for Player {
         context.draw_image(
             (self.pos_x as i32, self.pos_y as i32),
             bow_image,
-            self.angle,
+            if self.facing_left { -self.angle }  else { self.angle },
             (bow_image.4 as i32 / 2, bow_image.5 as i32 / 2),
+            self.facing_left,
         );
     }
 
