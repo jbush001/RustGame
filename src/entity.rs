@@ -132,11 +132,17 @@ impl Entity for Player {
     }
 
     fn draw(&mut self, context: &mut gfx::RenderContext) {
+        let bow_image = if self.bow_drawn {
+            &gfx::SPR_BOW_DRAWN
+        } else {
+            &gfx::SPR_BOW_NORMAL
+        };
+
         context.draw_image(
             (self.pos_x as i32, self.pos_y as i32),
-            &gfx::SPR_ARROW,
+            bow_image,
             self.angle,
-            (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2),
+            (bow_image.4 as i32 / 2, bow_image.5 as i32 / 2),
         );
     }
 
