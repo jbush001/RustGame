@@ -23,8 +23,8 @@
 use image::*;
 use std::env;
 use std::fs;
-use std::path::Path;
 use std::io::Write;
+use std::path::Path;
 
 fn main() {
     println!("cargo::rerun-if-changed=assets/");
@@ -104,7 +104,9 @@ fn main() {
     for (name, coords) in image_coordinates.iter() {
         // The tuple contains left, top, right, bottom in texture coordinate
         // space, width and height in pixels.
-        writeln!(file, "pub const {}: (f32, f32, f32, f32, u32, u32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
+        writeln!(
+            file,
+            "pub const {}: (f32, f32, f32, f32, u32, u32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
             name,
             coords.0 as f32 / ATLAS_SIZE as f32,
             coords.1 as f32 / ATLAS_SIZE as f32,
@@ -112,7 +114,8 @@ fn main() {
             (coords.1 + coords.3) as f32 / ATLAS_SIZE as f32,
             coords.2,
             coords.3,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     // Write out the new atlas image.

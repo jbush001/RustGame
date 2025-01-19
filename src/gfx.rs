@@ -130,8 +130,10 @@ fn init_texture_atlas() -> gl::types::GLuint {
 // | c d |   | y |   | y' |
 //
 fn rotate(point: &(f32, f32), matrix: &(f32, f32, f32, f32)) -> (f32, f32) {
-    (matrix.0 * point.0 + matrix.1 * point.1,
-    matrix.2 * point.0 + matrix.3 * point.1)
+    (
+        matrix.0 * point.0 + matrix.1 * point.1,
+        matrix.2 * point.0 + matrix.3 * point.1,
+    )
 }
 
 impl RenderContext {
@@ -167,21 +169,17 @@ impl RenderContext {
             vbo
         };
 
-        unsafe {
-            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
-        }
-
         let atlas_texture_id = init_texture_atlas();
 
-        unsafe  {
+        unsafe {
+            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
+
             // Assign texture unit
             let image_attr = gl::GetUniformLocation(program, c"texture0".as_ptr().cast());
             assert!(image_attr != -1);
             gl::Uniform1i(image_attr, 0);
-        }
 
-        // Enable source alpha blending
-        unsafe {
+            // Enable source alpha blending
             gl::Enable(gl::BLEND);
             gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
@@ -203,7 +201,7 @@ impl RenderContext {
         position: (i32, i32),
         image_info: &(f32, f32, f32, f32, u32, u32),
         rotation: f32,
-        origin: (i32, i32)
+        origin: (i32, i32),
     ) {
         let (atlas_left, atlas_top, atlas_right, atlas_bottom, width, height) = *image_info;
 
@@ -229,10 +227,7 @@ impl RenderContext {
         } else {
             let crot = f32::cos(rotation);
             let srot = f32::sin(rotation);
-            let rotmat = (
-                crot, -srot,
-                srot, crot,
-            );
+            let rotmat = (crot, -srot, srot, crot);
 
             (
                 rotate(&(left, top), &rotmat),
@@ -247,7 +242,7 @@ impl RenderContext {
         fn to_ogl_coord(pt: &(f32, f32), position: &(i32, i32)) -> (f32, f32) {
             (
                 ((pt.0 + position.0 as f32) / WINDOW_WIDTH as f32) * 2.0 - 1.0,
-                1.0 - ((pt.1 + position.1 as f32) / WINDOW_HEIGHT as f32) * 2.0
+                1.0 - ((pt.1 + position.1 as f32) / WINDOW_HEIGHT as f32) * 2.0,
             )
         }
 
@@ -256,18 +251,34 @@ impl RenderContext {
         p2 = to_ogl_coord(&p2, &position);
         p3 = to_ogl_coord(&p3, &position);
 
-        self.vertices.extend_from_slice(
-            &[
-                // Upper left triangle (CW winding)
-                p0.0, p0.1, atlas_left, atlas_top, // 0
-                p1.0, p1.1, atlas_right, atlas_top, // 1
-                p2.0, p2.1, atlas_left, atlas_bottom, // 2
-                // Lower right triangle
-                p1.0, p1.1, atlas_right, atlas_top, // 1
-                p3.0, p3.1, atlas_right, atlas_bottom, // 3
-                p2.0, p2.1, atlas_left, atlas_bottom, // 2
-            ]
-        );
+        self.vertices.extend_from_slice(&[
+            // Upper left triangle (CW winding)
+            p0.0,
+            p0.1,
+            atlas_left,
+            atlas_top, // 0
+            p1.0,
+            p1.1,
+            atlas_right,
+            atlas_top, // 1
+            p2.0,
+            p2.1,
+            atlas_left,
+            atlas_bottom, // 2
+            // Lower right triangle
+            p1.0,
+            p1.1,
+            atlas_right,
+            atlas_top, // 1
+            p3.0,
+            p3.1,
+            atlas_right,
+            atlas_bottom, // 3
+            p2.0,
+            p2.1,
+            atlas_left,
+            atlas_bottom, // 2
+        ]);
     }
 
     pub fn render(&mut self) {
@@ -307,7 +318,11 @@ impl RenderContext {
 
             gl::EnableVertexAttribArray(0);
             gl::EnableVertexAttribArray(1);
-            gl::DrawArrays(gl::TRIANGLES, 0, (self.vertices.len() / ATTRIBS_PER_VERTEX) as i32);
+            gl::DrawArrays(
+                gl::TRIANGLES,
+                0,
+                (self.vertices.len() / ATTRIBS_PER_VERTEX) as i32,
+            );
             check_gl_error();
         }
 
@@ -317,7 +332,10 @@ impl RenderContext {
     }
 }
 
-fn compile_shader(shader_type: gl::types::GLuint, source: &str) -> Result<gl::types::GLuint, String> {
+fn compile_shader(
+    shader_type: gl::types::GLuint,
+    source: &str,
+) -> Result<gl::types::GLuint, String> {
     unsafe {
         let shader = gl::CreateShader(shader_type);
         check_gl_error();
@@ -325,7 +343,7 @@ fn compile_shader(shader_type: gl::types::GLuint, source: &str) -> Result<gl::ty
             shader,
             1,
             &(source.as_bytes().as_ptr().cast()),
-            &(source.len().try_into().unwrap())
+            &(source.len().try_into().unwrap()),
         );
 
         gl::CompileShader(shader);
@@ -334,23 +352,22 @@ fn compile_shader(shader_type: gl::types::GLuint, source: &str) -> Result<gl::ty
         if status == 0 {
             let mut v: [u8; 1024] = [0; 1024];
             let mut log_length = 0i32;
-            gl::GetShaderInfoLog(
-                shader,
-                1024,
-                &mut log_length,
-                v.as_mut_ptr().cast(),
-            );
+            gl::GetShaderInfoLog(shader, 1024, &mut log_length, v.as_mut_ptr().cast());
 
-            return Err(
-                format!("Compile error {}", String::from_utf8_lossy(&v[..log_length as usize]))
-            );
+            return Err(format!(
+                "Compile error {}",
+                String::from_utf8_lossy(&v[..log_length as usize])
+            ));
         }
 
         Ok(shader)
     }
 }
 
-fn compile_program(vertex_source: &str, fragment_source: &str) -> Result<gl::types::GLuint, String> {
+fn compile_program(
+    vertex_source: &str,
+    fragment_source: &str,
+) -> Result<gl::types::GLuint, String> {
     let vertex_shader = compile_shader(gl::VERTEX_SHADER, vertex_source)?;
     let fragment_shader = compile_shader(gl::FRAGMENT_SHADER, fragment_source)?;
 
@@ -365,18 +382,14 @@ fn compile_program(vertex_source: &str, fragment_source: &str) -> Result<gl::typ
         if status == 0 {
             let mut v: [i8; 1024] = [0; 1024];
             let mut log_length = 0i32;
-            gl::GetProgramInfoLog(
-                program,
-                1024,
-                &mut log_length,
-                v.as_mut_ptr(),
-            );
+            gl::GetProgramInfoLog(program, 1024, &mut log_length, v.as_mut_ptr());
 
             let temp_msg = std::mem::transmute::<[i8; 1024], [u8; 1024]>(v);
 
-            return Err(
-                format!("Compile error {}", String::from_utf8_lossy(&temp_msg[..log_length as usize] as &[u8]))
-            );
+            return Err(format!(
+                "Compile error {}",
+                String::from_utf8_lossy(&temp_msg[..log_length as usize] as &[u8])
+            ));
         }
 
         check_gl_error();

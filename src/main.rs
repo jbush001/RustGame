@@ -14,9 +14,20 @@
 // limitations under the License.
 //
 
-mod gfx;
 mod entity;
+mod gfx;
 extern crate sdl2;
+
+fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
+    match key {
+        sdl2::keyboard::Keycode::Space => entity::CONTROL_FIRE,
+        sdl2::keyboard::Keycode::Up => entity::CONTROL_UP,
+        sdl2::keyboard::Keycode::Down => entity::CONTROL_DOWN,
+        sdl2::keyboard::Keycode::Left => entity::CONTROL_LEFT,
+        sdl2::keyboard::Keycode::Right => entity::CONTROL_RIGHT,
+        _ => 0,
+    }
+}
 
 fn main() {
     let mut sdl = sdl2::init().unwrap();
@@ -31,51 +42,23 @@ fn main() {
     'main: loop {
         for event in event_pump.poll_iter() {
             match event {
-                sdl2::event::Event::Quit {..} => break 'main,
-
-                sdl2::event::Event::KeyDown { keycode: Some(keycode), repeat: false, .. } => {
-                    match keycode {
-                        sdl2::keyboard::Keycode::Space => {
-                            buttons |= entity::CONTROL_FIRE;
-                        }
-                        sdl2::keyboard::Keycode::Up => {
-                            buttons |= entity::CONTROL_UP;
-                        }
-                        sdl2::keyboard::Keycode::Down => {
-                            buttons |= entity::CONTROL_DOWN;
-                        }
-                        sdl2::keyboard::Keycode::Left => {
-                            buttons |= entity::CONTROL_LEFT;
-                        }
-                        sdl2::keyboard::Keycode::Right => {
-                            buttons |= entity::CONTROL_RIGHT;
-                        }
-                        _ => {},
-                    }
+                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(keycode),
+                    repeat: false,
+                    ..
+                } => {
+                    buttons |= get_key_mask(keycode);
                 }
 
-                sdl2::event::Event::KeyUp { keycode: Some(keycode), .. } => {
-                    match keycode {
-                        sdl2::keyboard::Keycode::Space => {
-                            buttons &= !entity::CONTROL_FIRE;
-                        }
-                        sdl2::keyboard::Keycode::Up => {
-                            buttons &= !entity::CONTROL_UP;
-                        }
-                        sdl2::keyboard::Keycode::Down => {
-                            buttons &= !entity::CONTROL_DOWN;
-                        }
-                        sdl2::keyboard::Keycode::Left => {
-                            buttons &= !entity::CONTROL_LEFT;
-                        }
-                        sdl2::keyboard::Keycode::Right => {
-                            buttons &= !entity::CONTROL_RIGHT;
-                        }
-                        _ => {},
-                    }
+                sdl2::event::Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    buttons &= !get_key_mask(keycode);
                 }
 
-                _ => {},
+                _ => {}
             }
         }
 

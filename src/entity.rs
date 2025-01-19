@@ -61,7 +61,7 @@ impl Entity for Arrow {
             (self.xpos as i32, self.ypos as i32),
             &gfx::SPR_ARROW,
             self.angle,
-            (gfx::SPR_ARROW.4 as i32/ 2, gfx::SPR_ARROW.5 as i32 / 2)
+            (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2),
         );
     }
 
@@ -99,7 +99,9 @@ impl Entity for Player {
             if self.bow_drawn {
                 // It was released
                 let velocity = self.bow_draw_time.clamp(0.2, 0.4) * 2000.0;
-                new_entities.push(Box::new(Arrow::new(self.pos_x, self.pos_y, self.angle, velocity)));
+                new_entities.push(Box::new(Arrow::new(
+                    self.pos_x, self.pos_y, self.angle, velocity,
+                )));
                 self.bow_drawn = false;
             }
         } else {
@@ -134,7 +136,7 @@ impl Entity for Player {
             (self.pos_x as i32, self.pos_y as i32),
             &gfx::SPR_ARROW,
             self.angle,
-            (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2)
+            (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2),
         );
     }
 
@@ -161,4 +163,3 @@ pub fn do_frame(
         entity.draw(context);
     }
 }
-
