@@ -34,6 +34,7 @@ pub struct Arrow {
     xvec: f32,
     yvec: f32,
     angle: f32,
+    wobble: f32,
 }
 
 impl Arrow {
@@ -44,6 +45,7 @@ impl Arrow {
             xvec: angle.cos() * velocity,
             yvec: angle.sin() * velocity,
             angle,
+            wobble: 0.0,
         }
     }
 }
@@ -54,13 +56,14 @@ impl Entity for Arrow {
         self.ypos += self.yvec * d_t;
         self.angle = self.yvec.atan2(self.xvec);
         self.yvec += 400.0 * d_t;
+        self.wobble += d_t * 10.0;
     }
 
     fn draw(&mut self, context: &mut gfx::RenderContext) {
         context.draw_image(
             (self.xpos as i32, self.ypos as i32),
             &gfx::SPR_ARROW,
-            self.angle,
+            self.angle + self.wobble.sin() * 0.1,
             (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2),
             false,
         );
