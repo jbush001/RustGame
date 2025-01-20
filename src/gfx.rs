@@ -31,31 +31,27 @@ pub struct RenderContext {
     vertices: Vec<f32>,
 }
 
-const VERTEX_SHADER: &str = r#"
-#version 330 core
+const POSITION_ATTRIB: gl::types::GLuint = 0;
+const TEXCOORD_ATTRIB: gl::types::GLuint = 1;
 
-layout(location = 0) in vec2 position;
-layout(location = 1) in vec2 texcoord;
-out vec2 frag_texcoord;
+const VERTEX_SHADER: &str = r#"
+attribute vec2 aPosition;
+attribute vec2 aTexcoord;
+varying vec2 vTexcoord;
 
 void main() {
-    gl_Position = vec4(position, 0.0, 1.0);
-    frag_texcoord = texcoord;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexcoord = aTexcoord;
 }
 "#;
 
 const FRAGMENT_SHADER: &str = r#"
-#version 330 core
-
-in vec2 frag_texcoord;
-out vec4 color;
-
+varying vec2 vTexcoord;
 uniform sampler2D texture0;
 
 void main() {
-    color = texture(texture0, frag_texcoord);
+    gl_FragColor = texture2D(texture0, vTexcoord);
 }
-
 "#;
 
 fn check_gl_error() {
@@ -160,7 +156,10 @@ impl RenderContext {
         let program = compile_result.unwrap();
         unsafe {
             gl::UseProgram(program);
+            gl::BindAttribLocation(program, POSITION_ATTRIB, c"aPosition".as_ptr().cast());
+            gl::BindAttribLocation(program, TEXCOORD_ATTRIB, c"aTexcoord".as_ptr().cast());
         }
+
 
         let vbo = unsafe {
             let mut vbo = 0;
@@ -291,7 +290,7 @@ impl RenderContext {
 
             // Screen coordinate attribute
             gl::VertexAttribPointer(
-                0, // Input index
+                POSITION_ATTRIB,
                 2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
@@ -301,7 +300,7 @@ impl RenderContext {
 
             // Texture coordinate attribute
             gl::VertexAttribPointer(
-                1, // Input index
+                TEXCOORD_ATTRIB,
                 2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
@@ -346,9 +345,8 @@ fn compile_shader(
             let mut v: [u8; 1024] = [0; 1024];
             let mut log_length = 0i32;
             gl::GetShaderInfoLog(shader, 1024, &mut log_length, v.as_mut_ptr().cast());
-
             return Err(format!(
-                "Compile error {}",
+                "Shader compile error {}",
                 String::from_utf8_lossy(&v[..log_length as usize])
             ));
         }
@@ -380,7 +378,7 @@ fn compile_program(
             let temp_msg = std::mem::transmute::<[i8; 1024], [u8; 1024]>(v);
 
             return Err(format!(
-                "Compile error {}",
+                "Error linking shaders {}",
                 String::from_utf8_lossy(&temp_msg[..log_length as usize] as &[u8])
             ));
         }
