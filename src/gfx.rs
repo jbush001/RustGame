@@ -20,8 +20,8 @@ use image::ImageReader;
 // which is generated during the build process.
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
-pub const WINDOW_WIDTH: u32 = 900;
-pub const WINDOW_HEIGHT: u32 = 700;
+pub const WINDOW_WIDTH: u32 = 800;
+pub const WINDOW_HEIGHT: u32 = 450;
 
 pub struct RenderContext {
     window: sdl2::video::Window,
@@ -137,10 +137,10 @@ impl RenderContext {
         let video_subsystem = sdl.video().unwrap();
 
         // Note: doubling resolutions here because SDL seems
-        // to be halving them on my system. I think it's some
-        // kind of high-DPI thing.
+        // to be halving them on my system (Chromebook). I think it's some
+        // kind of high-DPI thing. This will probably break on other systems.
         let window = video_subsystem
-            .window("Game", WINDOW_WIDTH * 2, WINDOW_HEIGHT * 2)
+            .window("Game", WINDOW_WIDTH * 3, WINDOW_HEIGHT * 3)
             .opengl()
             .build()
             .unwrap();
