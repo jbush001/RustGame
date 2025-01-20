@@ -21,6 +21,9 @@ pub const CONTROL_DOWN: u32 = 0x2;
 pub const CONTROL_LEFT: u32 = 0x4;
 pub const CONTROL_RIGHT: u32 = 0x8;
 pub const CONTROL_FIRE: u32 = 0x10;
+pub const CONTROL_JUMP: u32 = 0x20;
+
+pub const GRAVITY: f32 = 500.0;
 
 pub trait Entity {
     fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>, buttons: u32);
@@ -55,7 +58,7 @@ impl Entity for Arrow {
         self.xpos += self.xvec * d_t;
         self.ypos += self.yvec * d_t;
         self.angle = self.yvec.atan2(self.xvec);
-        self.yvec += 400.0 * d_t;
+        self.yvec += GRAVITY * d_t;
         self.wobble += d_t * 10.0;
     }
 
@@ -85,7 +88,10 @@ pub struct Player {
     facing_left: bool,
     run_frame: u32,
     is_running: bool,
+    on_ground: bool,
     frame_time: f32,
+    y_vec: f32,
+    last_jump_button: bool,
 }
 
 const RUN_FRAME_DURATION: f32 = 0.1;
@@ -101,7 +107,10 @@ impl Player {
             facing_left: false,
             run_frame: 0,
             is_running: false,
+            on_ground: false,
             frame_time: 0.0,
+            y_vec: 0.0,
+            last_jump_button: false,
         }
     }
 }
@@ -112,7 +121,7 @@ impl Entity for Player {
             // Button not pressed
             if self.bow_drawn {
                 // It was released
-                let velocity = self.bow_draw_time.clamp(0.2, 0.4) * 2000.0;
+                let velocity = self.bow_draw_time.clamp(0.2, 0.4) * 3000.0;
                 let arrow_angle = if self.facing_left {
                     std::f32::consts::PI - self.angle
                 } else {
@@ -129,27 +138,44 @@ impl Entity for Player {
                 self.bow_draw_time += d_t;
             } else {
                 self.bow_drawn = true;
-                self.angle = 0.0;
                 self.bow_draw_time = 0.0;
+            }
+
+            // Player can adjust angle when bow is drawn.
+            if buttons & CONTROL_UP != 0 && self.angle > -std::f32::consts::PI / 2.0 {
+                self.angle -= d_t * std::f32::consts::PI;
+            }
+
+            if buttons & CONTROL_DOWN != 0 && self.angle < std::f32::consts::PI / 2.0 {
+                self.angle += d_t * std::f32::consts::PI;
             }
         }
 
-        if buttons & CONTROL_UP != 0 && self.angle > -std::f32::consts::PI / 2.0 {
-            self.angle -= d_t * std::f32::consts::PI;
+        self.on_ground = self.pos_y >= (gfx::WINDOW_HEIGHT - 48) as f32;
+        if self.on_ground {
+            if buttons & CONTROL_JUMP != 0 && !self.last_jump_button {
+                self.y_vec = -300.0;
+            } else {
+                self.y_vec = 0.0;
+            }
+        } else {
+            // In air
+            self.is_running = false;
+            self.y_vec += GRAVITY * d_t;
         }
 
-        if buttons & CONTROL_DOWN != 0 && self.angle < std::f32::consts::PI / 2.0 {
-            self.angle += d_t * std::f32::consts::PI;
-        }
+        self.last_jump_button = buttons & CONTROL_JUMP != 0;
+        self.pos_y += self.y_vec * d_t;
 
+        // Movement
         if buttons & CONTROL_LEFT != 0 {
             self.pos_x -= 150.0 * d_t;
             self.facing_left = true;
-            self.is_running = true;
+            self.is_running = self.on_ground;
         } else if buttons & CONTROL_RIGHT != 0 {
             self.pos_x += 150.0 * d_t;
             self.facing_left = false;
-            self.is_running = true;
+            self.is_running = self.on_ground;
         } else {
             self.is_running = false;
             self.run_frame = 0;
@@ -180,7 +206,9 @@ impl Entity for Player {
             );
         }
 
-        let body_image = if self.is_running {
+        let body_image = if !self.on_ground {
+            &gfx::SPR_PLAYER_BODY_JUMP
+        } else if self.is_running {
             match self.run_frame {
                 0 => &gfx::SPR_PLAYER_BODY_RUN1,
                 1 => &gfx::SPR_PLAYER_BODY_RUN2,
@@ -188,7 +216,7 @@ impl Entity for Player {
                 _ => &gfx::SPR_PLAYER_BODY_RUN1,
             }
         } else {
-            &gfx::SPR_PLAYER_BODY_NEUT
+            &gfx::SPR_PLAYER_BODY_IDLE
         };
 
         context.draw_image(
@@ -221,7 +249,7 @@ impl Entity for Player {
                     _ => &gfx::SPR_ARMS_RUN1,
                 }
             } else {
-                &gfx::SPR_ARMS_NEUTRAL
+                &gfx::SPR_ARMS_IDLE
             };
 
             context.draw_image(

@@ -20,11 +20,12 @@ extern crate sdl2;
 
 fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
     match key {
-        sdl2::keyboard::Keycode::Space => entity::CONTROL_FIRE,
         sdl2::keyboard::Keycode::Up => entity::CONTROL_UP,
         sdl2::keyboard::Keycode::Down => entity::CONTROL_DOWN,
         sdl2::keyboard::Keycode::Left => entity::CONTROL_LEFT,
         sdl2::keyboard::Keycode::Right => entity::CONTROL_RIGHT,
+        sdl2::keyboard::Keycode::X => entity::CONTROL_FIRE,
+        sdl2::keyboard::Keycode::Z => entity::CONTROL_JUMP,
         _ => 0,
     }
 }
