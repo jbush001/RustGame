@@ -1,3 +1,4 @@
 SPR_ARROW arrow.png
 SPR_BOW_NORMAL bow-not-drawn.png
 SPR_BOW_DRAWN bow-drawn.png
+SPR_PLAYER_BODY body-neutral.png

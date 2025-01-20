@@ -121,6 +121,7 @@ impl Entity for Player {
                 self.bow_draw_time += d_t;
             } else {
                 self.bow_drawn = true;
+                self.angle = 0.0;
                 self.bow_draw_time = 0.0;
             }
         }
@@ -145,17 +146,35 @@ impl Entity for Player {
     }
 
     fn draw(&mut self, context: &mut gfx::RenderContext) {
+        context.draw_image(
+            (self.pos_x as i32, self.pos_y as i32),
+            &gfx::SPR_PLAYER_BODY,
+            0.0,
+            (33, 20),
+            self.facing_left
+        );
+
         let bow_image = if self.bow_drawn {
             &gfx::SPR_BOW_DRAWN
         } else {
             &gfx::SPR_BOW_NORMAL
         };
 
+        let angle = if self.bow_drawn {
+            if self.facing_left {
+                -self.angle
+            } else {
+                self.angle
+            }
+        } else {
+            0.0
+        };
+
         context.draw_image(
             (self.pos_x as i32, self.pos_y as i32),
             bow_image,
-            if self.facing_left { -self.angle }  else { self.angle },
-            (bow_image.4 as i32 / 2, bow_image.5 as i32 / 2),
+            angle,
+            (33, 20),
             self.facing_left,
         );
     }
