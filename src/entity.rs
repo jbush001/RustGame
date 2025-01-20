@@ -83,17 +83,25 @@ pub struct Player {
     bow_drawn: bool,
     bow_draw_time: f32,
     facing_left: bool,
+    run_frame: u32,
+    is_running: bool,
+    frame_time: f32,
 }
+
+const RUN_FRAME_DURATION: f32 = 0.1;
 
 impl Player {
     pub fn new() -> Player {
         Player {
             angle: -std::f32::consts::PI / 4.0,
             pos_x: 20.0,
-            pos_y: (gfx::WINDOW_HEIGHT - 32) as f32,
+            pos_y: (gfx::WINDOW_HEIGHT - 48) as f32,
             bow_drawn: false,
             bow_draw_time: 0.0,
             facing_left: false,
+            run_frame: 0,
+            is_running: false,
+            frame_time: 0.0,
         }
     }
 }
@@ -135,48 +143,95 @@ impl Entity for Player {
         }
 
         if buttons & CONTROL_LEFT != 0 {
-            self.pos_x -= 100.0 * d_t;
+            self.pos_x -= 150.0 * d_t;
             self.facing_left = true;
+            self.is_running = true;
+        } else if buttons & CONTROL_RIGHT != 0 {
+            self.pos_x += 150.0 * d_t;
+            self.facing_left = false;
+            self.is_running = true;
+        } else {
+            self.is_running = false;
+            self.run_frame = 0;
+            self.frame_time = 0.0;
         }
 
-        if buttons & CONTROL_RIGHT != 0 {
-            self.pos_x += 100.0 * d_t;
-            self.facing_left = false;
+        if self.is_running {
+            self.frame_time += d_t;
+            if self.frame_time > RUN_FRAME_DURATION {
+                self.frame_time -= RUN_FRAME_DURATION;
+                self.run_frame += 1;
+                if self.run_frame > 2 {
+                    self.run_frame = 0;
+                }
+            }
         }
     }
 
     fn draw(&mut self, context: &mut gfx::RenderContext) {
+        if !self.bow_drawn {
+            // Draw bow on back
+            context.draw_image(
+                (self.pos_x as i32, self.pos_y as i32),
+                &gfx::SPR_BOW_ON_BACK,
+                0.0,
+                (33, 20),
+                self.facing_left,
+            );
+        }
+
+        let body_image = if self.is_running {
+            match self.run_frame {
+                0 => &gfx::SPR_PLAYER_BODY_RUN1,
+                1 => &gfx::SPR_PLAYER_BODY_RUN2,
+                2 => &gfx::SPR_PLAYER_BODY_RUN3,
+                _ => &gfx::SPR_PLAYER_BODY_RUN1,
+            }
+        } else {
+            &gfx::SPR_PLAYER_BODY_NEUT
+        };
+
         context.draw_image(
             (self.pos_x as i32, self.pos_y as i32),
-            &gfx::SPR_PLAYER_BODY,
+            body_image,
             0.0,
             (33, 20),
             self.facing_left
         );
 
-        let bow_image = if self.bow_drawn {
-            &gfx::SPR_BOW_DRAWN
-        } else {
-            &gfx::SPR_BOW_NORMAL
-        };
-
-        let angle = if self.bow_drawn {
-            if self.facing_left {
+        if self.bow_drawn {
+            let angle = if self.facing_left {
                 -self.angle
             } else {
                 self.angle
-            }
+            };
+            context.draw_image(
+                (self.pos_x as i32, self.pos_y as i32),
+                &gfx::SPR_BOW_DRAWN,
+                angle,
+                (33, 20),
+                self.facing_left,
+            );
         } else {
-            0.0
-        };
+            let arms_image = if self.is_running {
+                match self.run_frame {
+                    0 => &gfx::SPR_ARMS_RUN1,
+                    1 => &gfx::SPR_ARMS_RUN2,
+                    2 => &gfx::SPR_ARMS_RUN3,
+                    _ => &gfx::SPR_ARMS_RUN1,
+                }
+            } else {
+                &gfx::SPR_ARMS_NEUTRAL
+            };
 
-        context.draw_image(
-            (self.pos_x as i32, self.pos_y as i32),
-            bow_image,
-            angle,
-            (33, 20),
-            self.facing_left,
-        );
+            context.draw_image(
+                (self.pos_x as i32, self.pos_y as i32),
+                arms_image,
+                0.0,
+                (33, 20),
+                self.facing_left,
+            );
+        }
     }
 
     fn is_live(&self) -> bool {
