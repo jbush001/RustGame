@@ -128,7 +128,10 @@ impl Entity for Player {
                     self.angle
                 };
                 new_entities.push(Box::new(Arrow::new(
-                    self.pos_x, self.pos_y, arrow_angle, velocity,
+                    self.pos_x,
+                    self.pos_y,
+                    arrow_angle,
+                    velocity,
                 )));
                 self.bow_drawn = false;
             }
@@ -224,7 +227,7 @@ impl Entity for Player {
             body_image,
             0.0,
             (33, 20),
-            self.facing_left
+            self.facing_left,
         );
 
         if self.bow_drawn {

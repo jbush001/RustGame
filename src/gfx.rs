@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+use gl::types::{GLint, GLsizeiptr, GLuint};
 use image::ImageReader;
 
 // Load all constants pointing to individual images from the texture atlas,
@@ -25,14 +26,14 @@ pub const WINDOW_HEIGHT: u32 = 450;
 
 pub struct RenderContext {
     window: sdl2::video::Window,
-    _gl_context: sdl2::video::GLContext,
-    vbo: gl::types::GLuint,
-    atlas_texture_id: gl::types::GLuint,
+    _gl_context: sdl2::video::GLContext, // Hold this so it doesn't get dropped
+    vbo: GLuint,
+    atlas_texture_id: GLuint,
     vertices: Vec<f32>,
 }
 
-const POSITION_ATTRIB: gl::types::GLuint = 0;
-const TEXCOORD_ATTRIB: gl::types::GLuint = 1;
+const POSITION_ATTRIB: GLuint = 0;
+const TEXCOORD_ATTRIB: GLuint = 1;
 
 const VERTEX_SHADER: &str = r#"
 attribute vec2 aPosition;
@@ -65,7 +66,7 @@ fn check_gl_error() {
 
 // We use a single texture atlas with all images to avoid state changes during
 // rendering.
-fn init_texture_atlas() -> gl::types::GLuint {
+fn init_texture_atlas() -> GLuint {
     // The atlas file is copied into the same directory as our executable.
     let exe_path = std::env::current_exe().unwrap();
     let exe_dir = exe_path.parent().unwrap();
@@ -89,7 +90,7 @@ fn init_texture_atlas() -> gl::types::GLuint {
     let raster_data = binding.as_raw();
 
     unsafe {
-        let mut atlas_texture_id: gl::types::GLuint = 0;
+        let mut atlas_texture_id: GLuint = 0;
         gl::Enable(gl::TEXTURE_2D);
         gl::GenTextures(1, &mut atlas_texture_id);
 
@@ -159,7 +160,6 @@ impl RenderContext {
             gl::BindAttribLocation(program, POSITION_ATTRIB, c"aPosition".as_ptr().cast());
             gl::BindAttribLocation(program, TEXCOORD_ATTRIB, c"aTexcoord".as_ptr().cast());
         }
-
 
         let vbo = unsafe {
             let mut vbo = 0;
@@ -231,7 +231,7 @@ impl RenderContext {
                 (display_left, display_top),
                 (display_right, display_top),
                 (display_left, display_bottom),
-                (display_right, display_bottom)
+                (display_right, display_bottom),
             )
         } else {
             let crot = f32::cos(rotation);
@@ -274,13 +274,13 @@ impl RenderContext {
     }
 
     pub fn render(&mut self) {
-        const ATTRIBS_PER_VERTEX: usize = 4;
+        const ATTR_ELEMS_PER_VERTEX: usize = 4;
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
-                (self.vertices.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
+                (self.vertices.len() * std::mem::size_of::<f32>()) as GLsizeiptr,
                 self.vertices.as_ptr().cast(),
                 gl::STREAM_DRAW,
             );
@@ -294,7 +294,7 @@ impl RenderContext {
                 2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
-                (ATTRIBS_PER_VERTEX * std::mem::size_of::<f32>()) as gl::types::GLint,
+                (ATTR_ELEMS_PER_VERTEX * std::mem::size_of::<f32>()) as GLint,
                 std::ptr::null(),
             );
 
@@ -304,7 +304,7 @@ impl RenderContext {
                 2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
-                (ATTRIBS_PER_VERTEX * std::mem::size_of::<f32>()) as gl::types::GLint,
+                (ATTR_ELEMS_PER_VERTEX * std::mem::size_of::<f32>()) as GLint,
                 std::ptr::null::<f32>().add(2).cast(), // Offset into packed array.
             );
 
@@ -313,7 +313,7 @@ impl RenderContext {
             gl::DrawArrays(
                 gl::TRIANGLES,
                 0,
-                (self.vertices.len() / ATTRIBS_PER_VERTEX) as i32,
+                (self.vertices.len() / ATTR_ELEMS_PER_VERTEX) as i32,
             );
             check_gl_error();
         }
@@ -324,10 +324,7 @@ impl RenderContext {
     }
 }
 
-fn compile_shader(
-    shader_type: gl::types::GLuint,
-    source: &str,
-) -> Result<gl::types::GLuint, String> {
+fn compile_shader(shader_type: GLuint, source: &str) -> Result<GLuint, String> {
     unsafe {
         let shader = gl::CreateShader(shader_type);
         check_gl_error();
@@ -339,7 +336,7 @@ fn compile_shader(
         );
 
         gl::CompileShader(shader);
-        let mut status: gl::types::GLint = 1;
+        let mut status: GLint = 1;
         gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
         if status == 0 {
             let mut v: [u8; 1024] = [0; 1024];
@@ -355,10 +352,7 @@ fn compile_shader(
     }
 }
 
-fn compile_program(
-    vertex_source: &str,
-    fragment_source: &str,
-) -> Result<gl::types::GLuint, String> {
+fn compile_program(vertex_source: &str, fragment_source: &str) -> Result<GLuint, String> {
     let vertex_shader = compile_shader(gl::VERTEX_SHADER, vertex_source)?;
     let fragment_shader = compile_shader(gl::FRAGMENT_SHADER, fragment_source)?;
 
@@ -368,7 +362,7 @@ fn compile_program(
         gl::AttachShader(program, fragment_shader);
         gl::LinkProgram(program);
 
-        let mut status: gl::types::GLint = 1;
+        let mut status: GLint = 1;
         gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
         if status == 0 {
             let mut v: [i8; 1024] = [0; 1024];

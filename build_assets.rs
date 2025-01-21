@@ -98,7 +98,6 @@ fn main() {
     // into the executable.
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("assets.rs");
-    println!("cargo:warning=writing asset indices to {:?}", dest_path);
 
     let mut file = fs::File::create(&dest_path).unwrap();
     for (name, coords) in image_coordinates.iter() {
