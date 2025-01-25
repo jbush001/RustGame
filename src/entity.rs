@@ -112,14 +112,17 @@ impl Entity for Arrow {
 
     fn is_live(&self) -> bool {
         // XXX we don't check if this has gone out of scroll window.
-        self.ypos < gfx::WINDOW_HEIGHT as f32
-        && self.xpos > 0.0
-        && !self.collided
+        self.ypos < gfx::WINDOW_HEIGHT as f32 && self.xpos > 0.0 && !self.collided
     }
 
     fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
         // We only track the tip of the arrow
-        (self.xpos + self.angle.cos() * 14.0, self.ypos + self.angle.sin() * 14.0, 4.0, 4.0)
+        (
+            self.xpos + self.angle.cos() * 14.0,
+            self.ypos + self.angle.sin() * 14.0,
+            4.0,
+            4.0,
+        )
     }
 
     fn get_collision_class(&self) -> u32 {
@@ -162,7 +165,7 @@ impl Player {
         Player {
             angle: -std::f32::consts::PI / 4.0,
             pos_x: 20.0,
-            pos_y: 30.0 as f32,
+            pos_y: 30.0,
             bow_drawn: false,
             bow_draw_time: 0.0,
             facing_left: false,
@@ -251,13 +254,15 @@ impl Entity for Player {
         // Movement
         if buttons & CONTROL_LEFT != 0
             && !tile_map.is_solid(self.pos_x as i32 - 16, self.pos_y as i32 + 45)
-            && !tile_map.is_solid(self.pos_x as i32 - 16, self.pos_y as i32 - 15) {
+            && !tile_map.is_solid(self.pos_x as i32 - 16, self.pos_y as i32 - 15)
+        {
             self.pos_x -= 150.0 * d_t;
             self.facing_left = true;
             self.is_running = self.on_ground;
         } else if buttons & CONTROL_RIGHT != 0
             && !tile_map.is_solid(self.pos_x as i32 + 16, self.pos_y as i32 + 45)
-            && !tile_map.is_solid(self.pos_x as i32 + 16, self.pos_y as i32 - 15) {
+            && !tile_map.is_solid(self.pos_x as i32 + 16, self.pos_y as i32 - 15)
+        {
             self.pos_x += 150.0 * d_t;
             self.facing_left = false;
             self.is_running = self.on_ground;
@@ -381,7 +386,7 @@ impl Entity for Player {
         !COLL_PLAYER
     }
 
-    fn collide<'a>(&mut self, _other: &'a (dyn Entity)) {
+    fn collide(&mut self, _other: &(dyn Entity)) {
         // XXX check type
         self.killed = true;
     }
@@ -397,7 +402,7 @@ pub fn do_frame(
     context: &mut gfx::RenderContext,
     buttons: u32,
     tilemap: &tilemap::TileMap,
-    _visible_rect: &(i32, i32, i32, i32)
+    _visible_rect: &(i32, i32, i32, i32),
 ) {
     handle_collisions(entities);
 
@@ -414,7 +419,7 @@ pub fn do_frame(
     }
 }
 
-fn overlaps(a1: &(f32, f32, f32, f32), a2: &(f32, f32, f32, f32)) -> bool  {
+fn overlaps(a1: &(f32, f32, f32, f32), a2: &(f32, f32, f32, f32)) -> bool {
     let (x1, y1, w1, h1) = *a1;
     let (x2, y2, w2, h2) = *a2;
 

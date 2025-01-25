@@ -54,17 +54,17 @@ impl TileMap {
     pub fn draw(&mut self, context: &mut gfx::RenderContext, visible_rect: &(i32, i32, i32, i32)) {
         let (left, top, right, bottom) = *visible_rect;
 
-        let left_tile = left as i32 / TILE_SIZE;
-        let right_tile = (left + right as i32 + TILE_SIZE - 1) / TILE_SIZE;
-        let top_tile = top as i32 / TILE_SIZE;
-        let bottom_tile = (top + bottom as i32 + TILE_SIZE - 1) / TILE_SIZE;
+        let left_tile = left / TILE_SIZE;
+        let right_tile = (left + right + TILE_SIZE - 1) / TILE_SIZE;
+        let top_tile = top / TILE_SIZE;
+        let bottom_tile = (top + bottom + TILE_SIZE - 1) / TILE_SIZE;
 
         for y in top_tile..bottom_tile {
             for x in left_tile..right_tile {
                 let tile = self.tiles[(y * self.width + x) as usize];
                 if tile != 0 {
                     context.draw_image(
-                        (TILE_SIZE * x as i32, TILE_SIZE * y as i32),
+                        (TILE_SIZE * x, TILE_SIZE * y),
                         &gfx::TILE_BRICK,
                         0.0,
                         (0, 0),
