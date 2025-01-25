@@ -25,10 +25,26 @@ pub const CONTROL_JUMP: u32 = 0x20;
 
 pub const GRAVITY: f32 = 500.0;
 
+const COLL_MISSILE: u32 = 1;
+const COLL_PLAYER: u32 = 2;
+
 pub trait Entity {
     fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>, buttons: u32);
     fn draw(&mut self, context: &mut gfx::RenderContext);
     fn is_live(&self) -> bool;
+
+    // Each bit in this represents a type of entity, which is used
+    // in conjunction with get_collision_mask.
+    fn get_collision_class(&self) -> u32;
+
+    // Each 1 bit in this corresponds to a collision class that this entity
+    // will 'accept' collisions with.
+    fn get_collision_mask(&self) -> u32;
+
+    // Return axis aligned bounding box of this object (left, top, right, bottom)
+    // If two entities bounding boxes overlap they are considered to collide.
+    fn get_bounding_box(&self) -> (f32, f32, f32, f32);
+    fn collide(&mut self, other: &dyn Entity);
 }
 
 pub struct Arrow {
@@ -38,6 +54,7 @@ pub struct Arrow {
     yvec: f32,
     angle: f32,
     wobble: f32,
+    collided: bool,
 }
 
 impl Arrow {
@@ -49,6 +66,7 @@ impl Arrow {
             yvec: angle.sin() * velocity,
             angle,
             wobble: 0.0,
+            collided: false,
         }
     }
 }
@@ -76,6 +94,24 @@ impl Entity for Arrow {
         self.ypos < gfx::WINDOW_HEIGHT as f32
             && self.xpos > 0.0
             && self.xpos < gfx::WINDOW_WIDTH as f32
+            && !self.collided
+    }
+
+    fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
+        // We only track the tip of the arrow
+        (self.xpos + self.angle.cos() * 14.0, self.ypos + self.angle.sin() * 14.0, 4.0, 4.0)
+    }
+
+    fn get_collision_class(&self) -> u32 {
+        COLL_MISSILE
+    }
+
+    fn get_collision_mask(&self) -> u32 {
+        !COLL_MISSILE
+    }
+
+    fn collide(&mut self, _other: &dyn Entity) {
+        self.collided = true;
     }
 }
 
@@ -92,6 +128,7 @@ pub struct Player {
     frame_time: f32,
     y_vec: f32,
     last_jump_button: bool,
+    killed: bool,
 }
 
 const RUN_FRAME_DURATION: f32 = 0.1;
@@ -111,12 +148,17 @@ impl Player {
             frame_time: 0.0,
             y_vec: 0.0,
             last_jump_button: false,
+            killed: false,
         }
     }
 }
 
 impl Entity for Player {
     fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>, buttons: u32) {
+        if self.killed {
+            return;
+        }
+
         if buttons & CONTROL_FIRE == 0 {
             // Button not pressed
             if self.bow_drawn {
@@ -198,6 +240,17 @@ impl Entity for Player {
     }
 
     fn draw(&mut self, context: &mut gfx::RenderContext) {
+        if self.killed {
+            context.draw_image(
+                (self.pos_x as i32, self.pos_y as i32),
+                &gfx::SPR_PLAYER_DEAD,
+                0.0,
+                (33, 20),
+                false,
+            );
+            return;
+        }
+
         if !self.bow_drawn {
             // Draw bow on back
             context.draw_image(
@@ -268,6 +321,30 @@ impl Entity for Player {
     fn is_live(&self) -> bool {
         true
     }
+
+    fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
+        if self.killed {
+            // This affects how subsequent arrows that hit the corpse are
+            // displayed.
+            (self.pos_x - 32.0, self.pos_y + 40.0, 64.0, 14.0)
+        } else {
+            // We only include the torso
+            (self.pos_x - 5.0, self.pos_y - 5.0, 10.0, 15.0)
+        }
+    }
+
+    fn get_collision_class(&self) -> u32 {
+        COLL_PLAYER
+    }
+
+    fn get_collision_mask(&self) -> u32 {
+        !COLL_PLAYER
+    }
+
+    fn collide<'a>(&mut self, _other: &'a (dyn Entity)) {
+        // XXX check type
+        self.killed = true;
+    }
 }
 
 pub fn do_frame(
@@ -276,6 +353,8 @@ pub fn do_frame(
     context: &mut gfx::RenderContext,
     buttons: u32,
 ) {
+    handle_collisions(entities);
+
     let mut new_entities: Vec<Box<dyn Entity>> = Vec::new();
     for entity in entities.iter_mut() {
         entity.update(d_t, &mut new_entities, buttons);
@@ -286,5 +365,36 @@ pub fn do_frame(
 
     for entity in entities.iter_mut() {
         entity.draw(context);
+    }
+}
+
+fn overlaps(a1: &(f32, f32, f32, f32), a2: &(f32, f32, f32, f32)) -> bool  {
+    let (x1, y1, w1, h1) = *a1;
+    let (x2, y2, w2, h2) = *a2;
+
+    x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2
+}
+
+// Check for objects overlapping and call their collision handlers
+// This is a brute force O(n^2) algorithm. While a broad phase step
+// would reduce the computational complexity, for fairly small
+// numbers of objects this is probably preferable.
+fn handle_collisions(entities: &mut Vec<Box<dyn Entity>>) {
+    for i in 0..entities.len() - 1 {
+        let (arr1, arr2) = entities.split_at_mut(i + 1);
+        let e1 = &mut arr1[i];
+        let b1 = e1.get_bounding_box();
+        for e2 in arr2.iter_mut() {
+            let b2 = e2.get_bounding_box();
+            if overlaps(&b1, &b2) {
+                if (e1.get_collision_mask() & e2.get_collision_class()) != 0 {
+                    e1.collide(e2.as_ref());
+                }
+
+                if (e2.get_collision_mask() & e1.get_collision_class()) != 0 {
+                    e2.collide(e1.as_ref());
+                }
+            }
+        }
     }
 }

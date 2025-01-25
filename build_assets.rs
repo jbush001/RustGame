@@ -49,7 +49,7 @@ fn main() {
         let path = std::path::Path::new(&path);
         let path = path.canonicalize().unwrap();
         let path = path.to_str().unwrap();
-        println!("cargo:warning=asset: {:?}", path);
+        println!("Loading {:?}", path);
 
         let img = ImageReader::open(path);
         if let Err(msg) = img {
