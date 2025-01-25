@@ -39,6 +39,8 @@ fn main() {
     let mut event_pump = sdl.event_pump().unwrap();
     let mut entities: Vec<Box<dyn entity::Entity>> = Vec::new();
     let mut buttons: u32 = 0;
+    let mut x_scroll: i32 = 5;
+    let y_scroll: i32 = 0;
 
     entities.push(Box::new(entity::Player::new()));
 
@@ -65,8 +67,28 @@ fn main() {
             }
         }
 
-        entity::do_frame(&mut entities, 1.0 / 60.0, &mut context, buttons, &tilemap);
-        tilemap.draw(&mut context);
+        const left_scroll_boundary: i32 = gfx::WINDOW_WIDTH as i32 / 4;
+        const right_scroll_boundary: i32 = gfx::WINDOW_WIDTH as i32 * 3 / 4;
+        let x = entities[0].as_any().downcast_ref::<entity::Player>().unwrap().pos_x as i32;
+
+        if x > x_scroll + right_scroll_boundary {
+            x_scroll = x - right_scroll_boundary;
+        } else if x < x_scroll + left_scroll_boundary {
+            x_scroll = std::cmp::max(0, x - left_scroll_boundary);
+        }
+
+        context.set_offset(x_scroll, y_scroll);
+
+        let visible_rect = (x_scroll, y_scroll, gfx::WINDOW_WIDTH as i32, gfx::WINDOW_HEIGHT as i32);
+        entity::do_frame(
+            &mut entities,
+            1.0 / 60.0,
+            &mut context,
+            buttons,
+            &tilemap,
+            &visible_rect
+        );
+        tilemap.draw(&mut context, &visible_rect);
         context.render();
     }
 }

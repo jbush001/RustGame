@@ -16,6 +16,7 @@
 
 use crate::gfx;
 use crate::tilemap;
+use std::any::Any;
 
 pub const CONTROL_UP: u32 = 0x1;
 pub const CONTROL_DOWN: u32 = 0x2;
@@ -29,7 +30,7 @@ pub const GRAVITY: f32 = 500.0;
 const COLL_MISSILE: u32 = 1;
 const COLL_PLAYER: u32 = 2;
 
-pub trait Entity {
+pub trait Entity: Any {
     fn update(
         &mut self,
         d_t: f32,
@@ -52,6 +53,8 @@ pub trait Entity {
     // If two entities bounding boxes overlap they are considered to collide.
     fn get_bounding_box(&self) -> (f32, f32, f32, f32);
     fn collide(&mut self, other: &dyn Entity);
+
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub struct Arrow {
@@ -108,10 +111,10 @@ impl Entity for Arrow {
     }
 
     fn is_live(&self) -> bool {
+        // XXX we don't check if this has gone out of scroll window.
         self.ypos < gfx::WINDOW_HEIGHT as f32
-            && self.xpos > 0.0
-            && self.xpos < gfx::WINDOW_WIDTH as f32
-            && !self.collided
+        && self.xpos > 0.0
+        && !self.collided
     }
 
     fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
@@ -130,12 +133,16 @@ impl Entity for Arrow {
     fn collide(&mut self, _other: &dyn Entity) {
         self.collided = true;
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 pub struct Player {
     angle: f32,
-    pos_x: f32,
-    pos_y: f32,
+    pub pos_x: f32,
+    pub pos_y: f32,
     bow_drawn: bool,
     bow_draw_time: f32,
     facing_left: bool,
@@ -378,6 +385,10 @@ impl Entity for Player {
         // XXX check type
         self.killed = true;
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 pub fn do_frame(
@@ -386,6 +397,7 @@ pub fn do_frame(
     context: &mut gfx::RenderContext,
     buttons: u32,
     tilemap: &tilemap::TileMap,
+    _visible_rect: &(i32, i32, i32, i32)
 ) {
     handle_collisions(entities);
 

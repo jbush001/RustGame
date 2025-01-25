@@ -30,6 +30,7 @@ pub struct RenderContext {
     vbo: GLuint,
     atlas_texture_id: GLuint,
     vertices: Vec<f32>,
+    offset: (i32, i32),
 }
 
 const POSITION_ATTRIB: GLuint = 0;
@@ -191,7 +192,12 @@ impl RenderContext {
             vbo,
             atlas_texture_id,
             vertices: Vec::new(),
+            offset: (0, 0),
         })
+    }
+
+    pub fn set_offset(&mut self, x: i32, y: i32) {
+        self.offset = (x, y);
     }
 
     // Add an image to the display list.
@@ -204,6 +210,8 @@ impl RenderContext {
         flip_h: bool,
     ) {
         let (mut atlas_left, atlas_top, mut atlas_right, atlas_bottom, width, height) = *image_info;
+
+        let position = (position.0 - self.offset.0, position.1 - self.offset.1);
 
         if flip_h {
             std::mem::swap(&mut atlas_left, &mut atlas_right);
