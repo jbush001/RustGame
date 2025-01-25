@@ -27,7 +27,7 @@ pub struct TileMap {
 impl TileMap {
     pub fn new() -> TileMap {
         let width: i32 = 64;
-        let height: i32 = 9;
+        let height: i32 = 64;
 
         let mut map = TileMap {
             tiles: vec![0; (width * height) as usize],
@@ -36,10 +36,10 @@ impl TileMap {
         };
 
         for x in 0..width {
-            map.tiles[(6 * map.width + x) as usize] = 1;
+            map.tiles[(9 * map.width + x) as usize] = 1;
         }
 
-        map.tiles[(5 * map.width + 5) as usize] = 1;
+        map.tiles[(8 * map.width + 5) as usize] = 1;
         map
     }
 

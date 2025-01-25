@@ -40,9 +40,11 @@ fn main() {
     let mut entities: Vec<Box<dyn entity::Entity>> = Vec::new();
     let mut buttons: u32 = 0;
     let mut x_scroll: i32 = 5;
-    let y_scroll: i32 = 0;
+    let mut y_scroll: i32 = 0;
     const LEFT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 / 4;
     const RIGHT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 * 3 / 4;
+    const TOP_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 / 4;
+    const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 * 3 / 4;
 
     entities.push(Box::new(entity::Player::new()));
 
@@ -69,16 +71,23 @@ fn main() {
             }
         }
 
-        let x = entities[0]
+        let player = entities[0]
             .as_any()
             .downcast_ref::<entity::Player>()
-            .unwrap()
-            .pos_x as i32;
+            .unwrap();
+        let x = player.xpos as i32;
+        let y = player.ypos as i32;
 
         if x > x_scroll + RIGHT_SCROLL_BOUNDARY {
             x_scroll = x - RIGHT_SCROLL_BOUNDARY;
         } else if x < x_scroll + LEFT_SCROLL_BOUNDARY {
             x_scroll = std::cmp::max(0, x - LEFT_SCROLL_BOUNDARY);
+        }
+
+        if y > y_scroll + BOTTOM_SCROLL_BOUNDARY {
+            y_scroll = y - BOTTOM_SCROLL_BOUNDARY;
+        } else if y < y_scroll + TOP_SCROLL_BOUNDARY {
+            y_scroll = std::cmp::max(0, y - TOP_SCROLL_BOUNDARY);
         }
 
         context.set_offset(x_scroll, y_scroll);

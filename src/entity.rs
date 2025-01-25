@@ -96,7 +96,10 @@ impl Entity for Arrow {
         self.xpos += self.xvec * d_t;
         self.ypos += self.yvec * d_t;
         self.angle = self.yvec.atan2(self.xvec);
-        self.yvec += GRAVITY * d_t;
+        if self.yvec < 500.0 {
+            self.yvec += GRAVITY * d_t;
+        }
+
         self.wobble += d_t * 10.0;
     }
 
@@ -111,8 +114,7 @@ impl Entity for Arrow {
     }
 
     fn is_live(&self) -> bool {
-        // XXX we don't check if this has gone out of scroll window.
-        self.ypos < gfx::WINDOW_HEIGHT as f32 && self.xpos > 0.0 && !self.collided
+        !self.collided
     }
 
     fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
@@ -144,8 +146,8 @@ impl Entity for Arrow {
 
 pub struct Player {
     angle: f32,
-    pub pos_x: f32,
-    pub pos_y: f32,
+    pub xpos: f32,
+    pub ypos: f32,
     bow_drawn: bool,
     bow_draw_time: f32,
     facing_left: bool,
@@ -153,7 +155,7 @@ pub struct Player {
     is_running: bool,
     on_ground: bool,
     frame_time: f32,
-    y_vec: f32,
+    yvec: f32,
     last_jump_button: bool,
     killed: bool,
 }
@@ -164,8 +166,8 @@ impl Player {
     pub fn new() -> Player {
         Player {
             angle: -std::f32::consts::PI / 4.0,
-            pos_x: 20.0,
-            pos_y: 30.0,
+            xpos: 20.0,
+            ypos: 30.0,
             bow_drawn: false,
             bow_draw_time: 0.0,
             facing_left: false,
@@ -173,7 +175,7 @@ impl Player {
             is_running: false,
             on_ground: false,
             frame_time: 0.0,
-            y_vec: 0.0,
+            yvec: 0.0,
             last_jump_button: false,
             killed: false,
         }
@@ -203,8 +205,8 @@ impl Entity for Player {
                     self.angle
                 };
                 new_entities.push(Box::new(Arrow::new(
-                    self.pos_x,
-                    self.pos_y,
+                    self.xpos,
+                    self.ypos,
                     arrow_angle,
                     velocity,
                 )));
@@ -230,40 +232,43 @@ impl Entity for Player {
             }
         }
 
-        self.on_ground = tile_map.is_solid(self.pos_x as i32 - 12, self.pos_y as i32 + 48)
-            || tile_map.is_solid(self.pos_x as i32 + 12, self.pos_y as i32 + 48);
+        const GROUND_OFFSET: i32 = 44;
+        self.on_ground = tile_map.is_solid(self.xpos as i32 - 12, self.ypos as i32 + GROUND_OFFSET)
+            || tile_map.is_solid(self.xpos as i32 + 12, self.ypos as i32 + GROUND_OFFSET);
 
         if self.on_ground {
             if buttons & CONTROL_JUMP != 0 && !self.last_jump_button {
-                self.y_vec = -300.0;
+                self.yvec = -300.0;
             } else {
-                self.y_vec = 0.0;
+                self.yvec = 0.0;
 
                 // Ensure it is on the ground.
-                self.pos_y = (self.pos_y / 64.0).floor() * 64.0 + (64.0 - 48.0);
+                self.ypos = (self.ypos / 64.0).floor() * 64.0 + (64.0 - GROUND_OFFSET as f32);
             }
         } else {
             // In air
             self.is_running = false;
-            self.y_vec += GRAVITY * d_t;
+            if self.yvec < 500.0 {
+                self.yvec += GRAVITY * d_t;
+            }
         }
 
         self.last_jump_button = buttons & CONTROL_JUMP != 0;
-        self.pos_y += self.y_vec * d_t;
+        self.ypos += self.yvec * d_t;
 
         // Movement
         if buttons & CONTROL_LEFT != 0
-            && !tile_map.is_solid(self.pos_x as i32 - 16, self.pos_y as i32 + 45)
-            && !tile_map.is_solid(self.pos_x as i32 - 16, self.pos_y as i32 - 15)
+            && !tile_map.is_solid(self.xpos as i32 - 16, self.ypos as i32 + GROUND_OFFSET - 3)
+            && !tile_map.is_solid(self.xpos as i32 - 16, self.ypos as i32 - 15)
         {
-            self.pos_x -= 150.0 * d_t;
+            self.xpos -= 150.0 * d_t;
             self.facing_left = true;
             self.is_running = self.on_ground;
         } else if buttons & CONTROL_RIGHT != 0
-            && !tile_map.is_solid(self.pos_x as i32 + 16, self.pos_y as i32 + 45)
-            && !tile_map.is_solid(self.pos_x as i32 + 16, self.pos_y as i32 - 15)
+            && !tile_map.is_solid(self.xpos as i32 + 16, self.ypos as i32 + GROUND_OFFSET - 3)
+            && !tile_map.is_solid(self.xpos as i32 + 16, self.ypos as i32 - 15)
         {
-            self.pos_x += 150.0 * d_t;
+            self.xpos += 150.0 * d_t;
             self.facing_left = false;
             self.is_running = self.on_ground;
         } else {
@@ -287,7 +292,7 @@ impl Entity for Player {
     fn draw(&mut self, context: &mut gfx::RenderContext) {
         if self.killed {
             context.draw_image(
-                (self.pos_x as i32, self.pos_y as i32),
+                (self.xpos as i32, self.ypos as i32),
                 &gfx::SPR_PLAYER_DEAD,
                 0.0,
                 (33, 20),
@@ -299,7 +304,7 @@ impl Entity for Player {
         if !self.bow_drawn {
             // Draw bow on back
             context.draw_image(
-                (self.pos_x as i32, self.pos_y as i32),
+                (self.xpos as i32, self.ypos as i32),
                 &gfx::SPR_BOW_ON_BACK,
                 0.0,
                 (33, 20),
@@ -321,7 +326,7 @@ impl Entity for Player {
         };
 
         context.draw_image(
-            (self.pos_x as i32, self.pos_y as i32),
+            (self.xpos as i32, self.ypos as i32),
             body_image,
             0.0,
             (33, 20),
@@ -335,7 +340,7 @@ impl Entity for Player {
                 self.angle
             };
             context.draw_image(
-                (self.pos_x as i32, self.pos_y as i32),
+                (self.xpos as i32, self.ypos as i32),
                 &gfx::SPR_BOW_DRAWN,
                 angle,
                 (33, 20),
@@ -354,7 +359,7 @@ impl Entity for Player {
             };
 
             context.draw_image(
-                (self.pos_x as i32, self.pos_y as i32),
+                (self.xpos as i32, self.ypos as i32),
                 arms_image,
                 0.0,
                 (33, 20),
@@ -371,10 +376,10 @@ impl Entity for Player {
         if self.killed {
             // This affects how subsequent arrows that hit the corpse are
             // displayed.
-            (self.pos_x - 32.0, self.pos_y + 40.0, 64.0, 14.0)
+            (self.xpos - 32.0, self.ypos + 40.0, 64.0, 14.0)
         } else {
             // We only include the torso
-            (self.pos_x - 5.0, self.pos_y - 5.0, 10.0, 15.0)
+            (self.xpos - 5.0, self.ypos - 5.0, 10.0, 15.0)
         }
     }
 
@@ -405,13 +410,14 @@ pub fn do_frame(
     _visible_rect: &(i32, i32, i32, i32),
 ) {
     handle_collisions(entities);
-
     let mut new_entities: Vec<Box<dyn Entity>> = Vec::new();
     for entity in entities.iter_mut() {
         entity.update(d_t, &mut new_entities, buttons, tilemap);
     }
 
     entities.append(&mut new_entities);
+
+    // XXX despawn things that are too far outsize visible rect
     entities.retain(|entity| entity.is_live());
 
     for entity in entities.iter_mut() {
