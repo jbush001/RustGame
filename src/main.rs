@@ -16,6 +16,7 @@
 
 mod entity;
 mod gfx;
+mod tilemap;
 extern crate sdl2;
 
 fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
@@ -34,6 +35,7 @@ fn main() {
     let mut sdl = sdl2::init().unwrap();
     let mut context = gfx::RenderContext::new(&mut sdl).unwrap();
 
+    let mut tilemap = tilemap::TileMap::new();
     let mut event_pump = sdl.event_pump().unwrap();
     let mut entities: Vec<Box<dyn entity::Entity>> = Vec::new();
     let mut buttons: u32 = 0;
@@ -63,7 +65,8 @@ fn main() {
             }
         }
 
-        entity::do_frame(&mut entities, 1.0 / 60.0, &mut context, buttons);
+        entity::do_frame(&mut entities, 1.0 / 60.0, &mut context, buttons, &tilemap);
+        tilemap.draw(&mut context);
         context.render();
     }
 }

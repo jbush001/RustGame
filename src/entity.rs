@@ -15,6 +15,7 @@
 //
 
 use crate::gfx;
+use crate::tilemap;
 
 pub const CONTROL_UP: u32 = 0x1;
 pub const CONTROL_DOWN: u32 = 0x2;
@@ -29,7 +30,13 @@ const COLL_MISSILE: u32 = 1;
 const COLL_PLAYER: u32 = 2;
 
 pub trait Entity {
-    fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>, buttons: u32);
+    fn update(
+        &mut self,
+        d_t: f32,
+        new_entities: &mut Vec<Box<dyn Entity>>,
+        buttons: u32,
+        tile_map: &tilemap::TileMap,
+    );
     fn draw(&mut self, context: &mut gfx::RenderContext);
     fn is_live(&self) -> bool;
 
@@ -72,7 +79,17 @@ impl Arrow {
 }
 
 impl Entity for Arrow {
-    fn update(&mut self, d_t: f32, _new_entities: &mut Vec<Box<dyn Entity>>, _buttons: u32) {
+    fn update(
+        &mut self,
+        d_t: f32,
+        _new_entities: &mut Vec<Box<dyn Entity>>,
+        _buttons: u32,
+        tile_map: &tilemap::TileMap,
+    ) {
+        if tile_map.is_solid(self.xpos as i32, self.ypos as i32) {
+            self.collided = true;
+        }
+
         self.xpos += self.xvec * d_t;
         self.ypos += self.yvec * d_t;
         self.angle = self.yvec.atan2(self.xvec);
@@ -138,7 +155,7 @@ impl Player {
         Player {
             angle: -std::f32::consts::PI / 4.0,
             pos_x: 20.0,
-            pos_y: (gfx::WINDOW_HEIGHT - 48) as f32,
+            pos_y: 30.0 as f32,
             bow_drawn: false,
             bow_draw_time: 0.0,
             facing_left: false,
@@ -154,7 +171,13 @@ impl Player {
 }
 
 impl Entity for Player {
-    fn update(&mut self, d_t: f32, new_entities: &mut Vec<Box<dyn Entity>>, buttons: u32) {
+    fn update(
+        &mut self,
+        d_t: f32,
+        new_entities: &mut Vec<Box<dyn Entity>>,
+        buttons: u32,
+        tile_map: &tilemap::TileMap,
+    ) {
         if self.killed {
             return;
         }
@@ -175,6 +198,7 @@ impl Entity for Player {
                     arrow_angle,
                     velocity,
                 )));
+
                 self.bow_drawn = false;
             }
         } else {
@@ -196,12 +220,17 @@ impl Entity for Player {
             }
         }
 
-        self.on_ground = self.pos_y >= (gfx::WINDOW_HEIGHT - 48) as f32;
+        self.on_ground = tile_map.is_solid(self.pos_x as i32 - 12, self.pos_y as i32 + 48)
+            || tile_map.is_solid(self.pos_x as i32 + 12, self.pos_y as i32 + 48);
+
         if self.on_ground {
             if buttons & CONTROL_JUMP != 0 && !self.last_jump_button {
                 self.y_vec = -300.0;
             } else {
                 self.y_vec = 0.0;
+
+                // Ensure it is on the ground.
+                self.pos_y = (self.pos_y / 64.0).floor() * 64.0 + (64.0 - 48.0);
             }
         } else {
             // In air
@@ -213,11 +242,15 @@ impl Entity for Player {
         self.pos_y += self.y_vec * d_t;
 
         // Movement
-        if buttons & CONTROL_LEFT != 0 {
+        if buttons & CONTROL_LEFT != 0
+            && !tile_map.is_solid(self.pos_x as i32 - 16, self.pos_y as i32 + 45)
+            && !tile_map.is_solid(self.pos_x as i32 - 16, self.pos_y as i32 - 15) {
             self.pos_x -= 150.0 * d_t;
             self.facing_left = true;
             self.is_running = self.on_ground;
-        } else if buttons & CONTROL_RIGHT != 0 {
+        } else if buttons & CONTROL_RIGHT != 0
+            && !tile_map.is_solid(self.pos_x as i32 + 16, self.pos_y as i32 + 45)
+            && !tile_map.is_solid(self.pos_x as i32 + 16, self.pos_y as i32 - 15) {
             self.pos_x += 150.0 * d_t;
             self.facing_left = false;
             self.is_running = self.on_ground;
@@ -352,12 +385,13 @@ pub fn do_frame(
     d_t: f32,
     context: &mut gfx::RenderContext,
     buttons: u32,
+    tilemap: &tilemap::TileMap,
 ) {
     handle_collisions(entities);
 
     let mut new_entities: Vec<Box<dyn Entity>> = Vec::new();
     for entity in entities.iter_mut() {
-        entity.update(d_t, &mut new_entities, buttons);
+        entity.update(d_t, &mut new_entities, buttons, tilemap);
     }
 
     entities.append(&mut new_entities);
