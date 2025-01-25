@@ -15,6 +15,8 @@
 //
 
 use crate::gfx;
+use std::io::Read;
+use std::path::PathBuf;
 
 const TILE_SIZE: i32 = 64;
 
@@ -25,22 +27,33 @@ pub struct TileMap {
 }
 
 impl TileMap {
-    pub fn new() -> TileMap {
-        let width: i32 = 64;
-        let height: i32 = 64;
+    pub fn new(path: &PathBuf) -> TileMap {
+        let file = std::fs::File::open(path).unwrap();
+        let mut reader = std::io::BufReader::new(file);
 
-        let mut map = TileMap {
-            tiles: vec![0; (width * height) as usize],
-            width,
-            height,
-        };
-
-        for x in 0..width {
-            map.tiles[(9 * map.width + x) as usize] = 1;
+        // Check magic
+        let mut magic = [0; 4];
+        reader.read_exact(&mut magic).unwrap();
+        if &magic != b"TMAP" {
+            panic!("Invalid tilemap file");
         }
 
-        map.tiles[(8 * map.width + 5) as usize] = 1;
-        map
+        // Read width and height
+        let mut buf = [0; 4];
+        reader.read_exact(&mut buf).unwrap();
+        let width = i32::from_le_bytes(buf);
+        reader.read_exact(&mut buf).unwrap();
+        let height = i32::from_le_bytes(buf);
+
+        // Read tile data
+        let mut tiles = vec![0; (width * height) as usize];
+        reader.read_exact(&mut tiles).unwrap();
+
+        TileMap {
+            tiles,
+            width,
+            height,
+        }
     }
 
     pub fn is_solid(&self, x: i32, y: i32) -> bool {

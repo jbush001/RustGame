@@ -129,4 +129,28 @@ fn main() {
     if let Err(msg) = result {
         panic!("{}", msg);
     }
+
+    // Copy tiles file
+    let tiles = std::fs::read_to_string("assets/tiles.txt").unwrap();
+
+    const MAP_WIDTH: usize = 64;
+    const MAP_HEIGHT: usize = 64;
+
+    let mut encoded_map = vec![0; MAP_WIDTH * MAP_HEIGHT];
+    for (linenum, line) in tiles.lines().enumerate() {
+        for (colnum, c) in line.chars().enumerate() {
+            if c != ' ' {
+                encoded_map[linenum * MAP_WIDTH + colnum] = 1;
+            }
+        }
+    }
+
+    let output_file = fs::File::create("target/debug/map.bin").unwrap();
+    let mut writer = std::io::BufWriter::new(output_file);
+    const MAGIC: &[u8; 4] = b"TMAP";
+    writer.write(&MAGIC.as_bytes()).unwrap();
+    writer.write(&(MAP_WIDTH as u32).to_le_bytes()).unwrap();
+    writer.write(&(MAP_HEIGHT as u32).to_le_bytes()).unwrap();
+    writer.write(&encoded_map).unwrap();
+    writer.flush().unwrap();
 }

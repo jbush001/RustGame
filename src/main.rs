@@ -35,7 +35,10 @@ fn main() {
     let mut sdl = sdl2::init().unwrap();
     let mut context = gfx::RenderContext::new(&mut sdl).unwrap();
 
-    let mut tilemap = tilemap::TileMap::new();
+    let exe_path = std::env::current_exe().unwrap();
+    let exe_dir = exe_path.parent().unwrap();
+    let tile_map_path = exe_dir.join("map.bin");
+    let mut tile_map = tilemap::TileMap::new(&tile_map_path);
     let mut event_pump = sdl.event_pump().unwrap();
     let mut entities: Vec<Box<dyn entity::Entity>> = Vec::new();
     let mut buttons: u32 = 0;
@@ -103,10 +106,10 @@ fn main() {
             1.0 / 60.0,
             &mut context,
             buttons,
-            &tilemap,
+            &tile_map,
             &visible_rect,
         );
-        tilemap.draw(&mut context, &visible_rect);
+        tile_map.draw(&mut context, &visible_rect);
         context.render();
     }
 }

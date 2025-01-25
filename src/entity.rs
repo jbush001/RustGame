@@ -166,8 +166,8 @@ impl Player {
     pub fn new() -> Player {
         Player {
             angle: -std::f32::consts::PI / 4.0,
-            xpos: 20.0,
-            ypos: 30.0,
+            xpos: 128.0,
+            ypos: 128.0,
             bow_drawn: false,
             bow_draw_time: 0.0,
             facing_left: false,
