@@ -25,7 +25,7 @@ pub const CONTROL_RIGHT: u32 = 0x8;
 pub const CONTROL_FIRE: u32 = 0x10;
 pub const CONTROL_JUMP: u32 = 0x20;
 
-pub const GRAVITY: f32 = 500.0;
+pub const GRAVITY: f32 = 1500.0;
 
 const COLL_MISSILE: u32 = 1;
 const COLL_PLAYER: u32 = 2;
@@ -154,6 +154,7 @@ pub struct Player {
     run_frame: u32,
     is_running: bool,
     on_ground: bool,
+    jump_counter: u32,
     frame_time: f32,
     yvec: f32,
     last_jump_button: bool,
@@ -161,6 +162,7 @@ pub struct Player {
 }
 
 const RUN_FRAME_DURATION: f32 = 0.1;
+const MAX_JUMP_COUNTER: u32 = 5;
 
 impl Player {
     pub fn new() -> Player {
@@ -174,6 +176,7 @@ impl Player {
             run_frame: 0,
             is_running: false,
             on_ground: false,
+            jump_counter: MAX_JUMP_COUNTER,
             frame_time: 0.0,
             yvec: 0.0,
             last_jump_button: false,
@@ -198,7 +201,7 @@ impl Entity for Player {
             // Button not pressed
             if self.bow_drawn {
                 // It was released
-                let velocity = self.bow_draw_time.clamp(0.2, 0.4) * 3000.0;
+                let velocity = self.bow_draw_time.clamp(0.2, 0.4) * 5000.0;
                 let arrow_angle = if self.facing_left {
                     std::f32::consts::PI - self.angle
                 } else {
@@ -238,12 +241,22 @@ impl Entity for Player {
 
         if self.on_ground {
             if buttons & CONTROL_JUMP != 0 && !self.last_jump_button {
-                self.yvec = -300.0;
+                self.yvec = -100.0;
+                self.jump_counter = 0;
             } else {
                 self.yvec = 0.0;
 
                 // Ensure it is on the ground.
                 self.ypos = (self.ypos / 64.0).floor() * 64.0 + (64.0 - GROUND_OFFSET as f32);
+            }
+        } else if self.jump_counter < MAX_JUMP_COUNTER {
+            // Size of jump is proportional to how long the button is held
+            if buttons & CONTROL_JUMP != 0 {
+                self.yvec -= 5000.0 * d_t;
+                self.jump_counter += 1;
+            } else {
+                // If you let off button, stops increasing jump height
+                self.jump_counter = MAX_JUMP_COUNTER;
             }
         } else {
             // In air
