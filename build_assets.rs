@@ -24,40 +24,22 @@ use image::*;
 use std::env;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::collections::HashMap;
+
+// XXX should scale this based on number of assets...
+const ATLAS_SIZE: u32 = 1024;
 
 fn main() {
     println!("cargo::rerun-if-changed=assets/");
     println!("cargo::rerun-if-changed=build.rs");
 
-    // Scan the manifest and load all images into it.
-    let mut images: Vec<(String, DynamicImage)> = Vec::new();
-    let manifest = std::fs::read_to_string("assets/manifest.txt").unwrap();
-    for line in manifest.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
+    let sprite_ids = read_manifest(&"assets/manifest.txt");
+    let (map_width, map_height, encoded_map, tile_paths) = read_tile_map(&"assets/tiles.txt");
 
-        // Split
-        let tokens: Vec<&str> = line.split(' ').collect();
-        if tokens.len() != 2 {
-            panic!("Invalid manifest line: {}", line);
-        }
+    let mut image_paths: Vec<String> = tile_paths.clone();
+    image_paths.extend(sprite_ids.iter().map(|(_, path)| path.clone()));
 
-        let path = format!("assets/{}", tokens[1]);
-        let path = std::path::Path::new(&path);
-        let path = path.canonicalize().unwrap();
-        let path = path.to_str().unwrap();
-        println!("Loading {:?}", path);
-
-        let img = ImageReader::open(path);
-        if let Err(msg) = img {
-            panic!("{}", msg);
-        }
-
-        images.push((tokens[0].to_string(), img.unwrap().decode().unwrap()));
-    }
+    let mut images = load_images(&image_paths);
 
     // Sort images by vertical size, which will make them pack better.
     images.sort_by(|a, b| {
@@ -66,13 +48,137 @@ fn main() {
         a.1.cmp(&b.1)
     });
 
-    // Pack images, left to right, top to bottom. There are much more
-    // sophisticated ways to do this that waste less space, but this
-    // is fairly simple and does an okay job.
-    const ATLAS_SIZE: u32 = 1024;
+    let (atlas, image_coordinates) = pack_images(&images);
+
+    // Write out a rust file with all of the sprite locations. This will be linked
+    // into the executable.
+    let out_dir = env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned() + "/assets.rs";
+    write_sprite_locations(&out_dir, &sprite_ids, &image_coordinates);
+
+    // Write out the new atlas image.
+    let result = image::save_buffer(
+        "target/debug/atlas.png", // XXX HACK, hardcoded dest path.
+        &atlas.to_rgba8().into_raw(),
+        atlas.width(),
+        atlas.height(),
+        image::ColorType::Rgba8,
+    );
+
+    if let Err(msg) = result {
+        panic!("{}", msg);
+    }
+
+    write_map_file(
+        &"target/debug/map.bin",
+        &encoded_map,
+        &tile_paths,
+        &image_coordinates,
+        map_width,
+        map_height,
+    );
+}
+
+// Returns a list of identifier->path mappings
+fn read_manifest(path: &str) -> Vec<(String, String)> {
+    let mut sprites: Vec<(String, String)> = Vec::new();
+    let manifest = std::fs::read_to_string(path).unwrap();
+    for line in manifest.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let tokens: Vec<&str> = line.split(' ').collect();
+        if tokens.len() != 2 {
+            panic!("Invalid manifest line: {}", line);
+        }
+
+        sprites.push((tokens[0].to_string(), tokens[1].to_string()));
+    }
+
+    sprites
+}
+
+fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>) {
+    let tiles = std::fs::read_to_string(path).unwrap();
+    let mut char_to_tile: HashMap<char, usize> = HashMap::new();
+    let mut tile_images: Vec<String> = Vec::new();
+
+    // XXX should scale these based on content.
+    const MAP_WIDTH: usize = 64;
+    const MAP_HEIGHT: usize = 64;
+
+    let mut encoded_map = vec![0u8; MAP_WIDTH * MAP_HEIGHT];
+    let mut reading_tile_images = true;
+    let mut map_start = 0;
+
+    for (linenum, line) in tiles.lines().enumerate() {
+        if line.starts_with("------") {
+            if !reading_tile_images {
+                panic!("{}:{}: Unexpected separator", path, linenum + 1);
+            }
+
+            reading_tile_images = false;
+            map_start = linenum + 1;
+            continue;
+        }
+
+        if reading_tile_images {
+            let tokens: Vec<&str> = line.split('=').collect();
+            if tokens.len() != 2 {
+                panic!("{}:{}: Invalid line", path, linenum + 1);
+            }
+
+            if tokens[0].len() != 1 {
+                panic!("{}:{}: Invalid tile character", path, linenum + 1);
+            }
+
+            let ch = tokens[0].chars().next().unwrap();
+            if char_to_tile.contains_key(&ch) {
+                panic!("{}:{}: Duplicate tile character", path, linenum + 1);
+            }
+
+            char_to_tile.insert(ch, tile_images.len());
+            tile_images.push(tokens[1].trim().to_string());
+        } else {
+            let map_row = linenum - map_start;
+            for (map_col, c) in line.chars().enumerate() {
+                if c != ' ' {
+                    if !char_to_tile.contains_key(&c) {
+                        panic!("{}:{}: Invalid tile character", path, linenum + 1);
+                    }
+
+                    let tile_index = char_to_tile.get(&c).unwrap() + 1;
+                    encoded_map[map_row * MAP_WIDTH + map_col] = tile_index as u8;
+                }
+            }
+        }
+    }
+
+    (MAP_WIDTH, MAP_HEIGHT, encoded_map, tile_images)
+}
+
+// Given a list of paths, return corresponding images.
+fn load_images(filenames: &Vec<String>) -> Vec<(String, DynamicImage)> {
+    let mut images: Vec<(String, DynamicImage)> = Vec::new();
+    for filename in filenames.iter() {
+        let img = ImageReader::open(format!("assets/{}", filename));
+        if let Err(msg) = img {
+            panic!("Failed to load {}: {}", filename, msg);
+        }
+
+        images.push((filename.clone(), img.unwrap().decode().unwrap()));
+    }
+
+    images
+}
+
+fn pack_images(images: &Vec<(String, DynamicImage)>)
+    -> (DynamicImage, HashMap<String, (f32, f32, f32, f32, u32, u32)>)
+{
     const BORDER_SIZE: u32 = 2;
     let mut atlas = DynamicImage::new_rgba8(ATLAS_SIZE, ATLAS_SIZE);
-    let mut image_coordinates: Vec<(String, (u32, u32, u32, u32))> = Vec::new();
+    let mut image_coordinates: HashMap<String, (f32, f32, f32, f32, u32, u32)> = HashMap::new();
     let mut x = BORDER_SIZE;
     let mut y = BORDER_SIZE;
     let mut row_height = images[0].1.height();
@@ -90,67 +196,73 @@ fn main() {
         }
 
         let _ = atlas.copy_from(img, x, y);
-        image_coordinates.push((name.clone(), (x, y, img.width(), img.height())));
+        println!("Packing image {} at {},{}", name, x, y);
+        image_coordinates.insert(name.clone(), (
+            x as f32 / ATLAS_SIZE as f32,
+            y as f32 / ATLAS_SIZE as f32,
+            (x + img.width() - 1) as f32 / ATLAS_SIZE as f32,
+            (y + img.height() - 1) as f32 / ATLAS_SIZE as f32,
+            img.width(),
+            img.height(),
+        ));
         x += img.width() + BORDER_SIZE;
     }
 
-    // Write out a rust file with all of the locations. This will be linked
-    // into the executable.
-    let out_dir = env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("assets.rs");
+    (atlas, image_coordinates)
+}
 
+fn write_sprite_locations(
+    dest_path: &str,
+    sprite_ids: &Vec<(String, String)>,
+    image_coordinates: &HashMap<String, (f32, f32, f32, f32, u32, u32)>)
+{
     let mut file = fs::File::create(&dest_path).unwrap();
-    for (name, coords) in image_coordinates.iter() {
-        // The tuple contains left, top, right, bottom in texture coordinate
-        // space, width and height in pixels.
+    for (name, path) in sprite_ids {
+        let (left, top, right, bottom, width, height) = *image_coordinates.get(path).unwrap();
         writeln!(
             file,
             "pub const {}: (f32, f32, f32, f32, u32, u32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
-            name,
-            coords.0 as f32 / ATLAS_SIZE as f32,
-            coords.1 as f32 / ATLAS_SIZE as f32,
-            (coords.0 + coords.2) as f32 / ATLAS_SIZE as f32,
-            (coords.1 + coords.3) as f32 / ATLAS_SIZE as f32,
-            coords.2,
-            coords.3,
+            name, left, top, right, bottom, width, height,
         )
         .unwrap();
     }
+}
 
-    // Write out the new atlas image.
-    let result = image::save_buffer(
-        "target/debug/atlas.png", // XXX HACK, hardcoded dest path.
-        &atlas.to_rgba8().into_raw(),
-        atlas.width(),
-        atlas.height(),
-        image::ColorType::Rgba8,
-    );
-
-    if let Err(msg) = result {
-        panic!("{}", msg);
-    }
-
-    // Copy tiles file
-    let tiles = std::fs::read_to_string("assets/tiles.txt").unwrap();
-
-    const MAP_WIDTH: usize = 64;
-    const MAP_HEIGHT: usize = 64;
-
-    let mut encoded_map = vec![0; MAP_WIDTH * MAP_HEIGHT];
-    for (linenum, line) in tiles.lines().enumerate() {
-        for (colnum, c) in line.chars().enumerate() {
-            if c != ' ' {
-                encoded_map[linenum * MAP_WIDTH + colnum] = 1;
-            }
-        }
-    }
-
-    let output_file = fs::File::create("target/debug/map.bin").unwrap();
+//
+// Format
+//    magic [u8; 4]  "TMAP"
+//    width: u32
+//    height: u32
+//    num_tiles: u32
+//    tile_locs: [(f32, f32, f32, f32), num_tiles]
+//    map: [u8; width * height]
+//  "255 tiles should be enough for anyone"
+//
+fn write_map_file(
+    dest_path: &str,
+    encoded_map: &Vec<u8>,
+    tile_paths: &Vec<String>,
+    image_coordinates: &HashMap<String, (f32, f32, f32, f32, u32, u32)>,
+    width: usize,
+    height: usize
+) {
+    let output_file = fs::File::create(dest_path).unwrap();
     let mut writer = std::io::BufWriter::new(output_file);
     const MAGIC: &[u8; 4] = b"TMAP";
     writer.write(&MAGIC.as_bytes()).unwrap();
-    writer.write(&(MAP_WIDTH as u32).to_le_bytes()).unwrap();
-    writer.write(&(MAP_HEIGHT as u32).to_le_bytes()).unwrap();
+    writer.write(&(width as u32).to_le_bytes()).unwrap();
+    writer.write(&(height as u32).to_le_bytes()).unwrap();
+    writer.write(&(tile_paths.len() as u32).to_le_bytes()).unwrap();
+    for path in tile_paths.iter() {
+        assert!(image_coordinates.contains_key(path));
+        let (left, top, right, bottom, _width, _height) = image_coordinates.get(path).unwrap();
+        println!("Writing tile location for {}: {:?} {:?} {:?} {:?}", path, left, top, right, bottom);
+        writer.write(&left.to_le_bytes()).unwrap();
+        writer.write(&top.to_le_bytes()).unwrap();
+        writer.write(&right.to_le_bytes()).unwrap();
+        writer.write(&bottom.to_le_bytes()).unwrap();
+    }
+
     writer.write(&encoded_map).unwrap();
     writer.flush().unwrap();
 }

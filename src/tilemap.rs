@@ -22,11 +22,19 @@ const TILE_SIZE: i32 = 64;
 
 pub struct TileMap {
     tiles: Vec<u8>,
+    atlas_coords: Vec<(f32, f32, f32, f32, u32, u32)>,
     width: i32,
     height: i32,
 }
 
 impl TileMap {
+    // Format
+    //    magic [u8; 4]  "TMAP"
+    //    width: u32
+    //    height: u32
+    //    num_tiles: u32
+    //    tile_locs: [(f32, f32, f32, f32), num_tiles]
+    //    map: [u8; width * height]
     pub fn new(path: &PathBuf) -> TileMap {
         let file = std::fs::File::open(path).unwrap();
         let mut reader = std::io::BufReader::new(file);
@@ -39,11 +47,28 @@ impl TileMap {
         }
 
         // Read width and height
-        let mut buf = [0; 4];
+        let mut buf = [0u8; 4];
         reader.read_exact(&mut buf).unwrap();
         let width = i32::from_le_bytes(buf);
         reader.read_exact(&mut buf).unwrap();
         let height = i32::from_le_bytes(buf);
+
+        reader.read_exact(&mut buf).unwrap();
+        let num_tiles = i32::from_le_bytes(buf);
+        let mut atlas_coords = Vec::new();
+        println!("num_tiles: {}", num_tiles);
+        for _ in 0..num_tiles {
+            reader.read_exact(&mut buf).unwrap();
+            let left = f32::from_le_bytes(buf);
+            reader.read_exact(&mut buf).unwrap();
+            let top = f32::from_le_bytes(buf);
+            reader.read_exact(&mut buf).unwrap();
+            let right = f32::from_le_bytes(buf);
+            reader.read_exact(&mut buf).unwrap();
+            let bottom = f32::from_le_bytes(buf);
+
+            atlas_coords.push((left, top, right, bottom, TILE_SIZE as u32, TILE_SIZE as u32));
+        }
 
         // Read tile data
         let mut tiles = vec![0; (width * height) as usize];
@@ -51,6 +76,7 @@ impl TileMap {
 
         TileMap {
             tiles,
+            atlas_coords,
             width,
             height,
         }
@@ -78,7 +104,7 @@ impl TileMap {
                 if tile != 0 {
                     context.draw_image(
                         (TILE_SIZE * x, TILE_SIZE * y),
-                        &gfx::TILE_BRICK,
+                        &self.atlas_coords[tile as usize - 1],
                         0.0,
                         (0, 0),
                         false,

@@ -11,4 +11,3 @@ SPR_PLAYER_BODY_RUN2 body-run2.png
 SPR_PLAYER_BODY_RUN3 body-run3.png
 SPR_PLAYER_BODY_JUMP body-jump.png
 SPR_PLAYER_DEAD body-dead.png
-TILE_BRICK tile-brick.png

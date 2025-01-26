@@ -1,8 +1,11 @@
+X=tile-brick.png
+.=tile-water.png
+------
 X                                       X
 X                                       X
-X        X                              X
-X       XX                              X
-X      XXX                              X
+X        X  X                           X
+X       XX  X...........................X
+X      XXX  X...........................X
 X     XXXX  XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 X    XXXXX                              X
 X   XXXXXX                              X
