@@ -21,20 +21,22 @@
 //
 
 use image::*;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::Write;
-use std::collections::HashMap;
 
 // XXX should scale this based on number of assets...
 const ATLAS_SIZE: u32 = 1024;
+
+type AtlasLocation = (f32, f32, f32, f32, u32, u32);
 
 fn main() {
     println!("cargo::rerun-if-changed=assets/");
     println!("cargo::rerun-if-changed=build.rs");
 
-    let sprite_ids = read_manifest(&"assets/manifest.txt");
-    let (map_width, map_height, encoded_map, tile_paths) = read_tile_map(&"assets/tiles.txt");
+    let sprite_ids = read_sprite_list("assets/sprites.txt");
+    let (map_width, map_height, encoded_map, tile_paths) = read_tile_map("assets/tiles.txt");
 
     let mut image_paths: Vec<String> = tile_paths.clone();
     image_paths.extend(sprite_ids.iter().map(|(_, path)| path.clone()));
@@ -69,7 +71,7 @@ fn main() {
     }
 
     write_map_file(
-        &"target/debug/map.bin",
+        "target/debug/map.bin",
         &encoded_map,
         &tile_paths,
         &image_coordinates,
@@ -79,7 +81,7 @@ fn main() {
 }
 
 // Returns a list of identifier->path mappings
-fn read_manifest(path: &str) -> Vec<(String, String)> {
+fn read_sprite_list(path: &str) -> Vec<(String, String)> {
     let mut sprites: Vec<(String, String)> = Vec::new();
     let manifest = std::fs::read_to_string(path).unwrap();
     for line in manifest.lines() {
@@ -159,7 +161,7 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>) {
 }
 
 // Given a list of paths, return corresponding images.
-fn load_images(filenames: &Vec<String>) -> Vec<(String, DynamicImage)> {
+fn load_images(filenames: &[String]) -> Vec<(String, DynamicImage)> {
     let mut images: Vec<(String, DynamicImage)> = Vec::new();
     for filename in filenames.iter() {
         let img = ImageReader::open(format!("assets/{}", filename));
@@ -173,12 +175,12 @@ fn load_images(filenames: &Vec<String>) -> Vec<(String, DynamicImage)> {
     images
 }
 
-fn pack_images(images: &Vec<(String, DynamicImage)>)
-    -> (DynamicImage, HashMap<String, (f32, f32, f32, f32, u32, u32)>)
-{
+fn pack_images(
+    images: &[(String, DynamicImage)],
+) -> (DynamicImage, HashMap<String, AtlasLocation>) {
     const BORDER_SIZE: u32 = 2;
     let mut atlas = DynamicImage::new_rgba8(ATLAS_SIZE, ATLAS_SIZE);
-    let mut image_coordinates: HashMap<String, (f32, f32, f32, f32, u32, u32)> = HashMap::new();
+    let mut image_coordinates: HashMap<String, AtlasLocation> = HashMap::new();
     let mut x = BORDER_SIZE;
     let mut y = BORDER_SIZE;
     let mut row_height = images[0].1.height();
@@ -197,14 +199,17 @@ fn pack_images(images: &Vec<(String, DynamicImage)>)
 
         let _ = atlas.copy_from(img, x, y);
         println!("Packing image {} at {},{}", name, x, y);
-        image_coordinates.insert(name.clone(), (
-            x as f32 / ATLAS_SIZE as f32,
-            y as f32 / ATLAS_SIZE as f32,
-            (x + img.width() - 1) as f32 / ATLAS_SIZE as f32,
-            (y + img.height() - 1) as f32 / ATLAS_SIZE as f32,
-            img.width(),
-            img.height(),
-        ));
+        image_coordinates.insert(
+            name.clone(),
+            (
+                x as f32 / ATLAS_SIZE as f32,
+                y as f32 / ATLAS_SIZE as f32,
+                (x + img.width() - 1) as f32 / ATLAS_SIZE as f32,
+                (y + img.height() - 1) as f32 / ATLAS_SIZE as f32,
+                img.width(),
+                img.height(),
+            ),
+        );
         x += img.width() + BORDER_SIZE;
     }
 
@@ -214,9 +219,9 @@ fn pack_images(images: &Vec<(String, DynamicImage)>)
 fn write_sprite_locations(
     dest_path: &str,
     sprite_ids: &Vec<(String, String)>,
-    image_coordinates: &HashMap<String, (f32, f32, f32, f32, u32, u32)>)
-{
-    let mut file = fs::File::create(&dest_path).unwrap();
+    image_coordinates: &HashMap<String, AtlasLocation>,
+) {
+    let mut file = fs::File::create(dest_path).unwrap();
     for (name, path) in sprite_ids {
         let (left, top, right, bottom, width, height) = *image_coordinates.get(path).unwrap();
         writeln!(
@@ -240,29 +245,34 @@ fn write_sprite_locations(
 //
 fn write_map_file(
     dest_path: &str,
-    encoded_map: &Vec<u8>,
-    tile_paths: &Vec<String>,
-    image_coordinates: &HashMap<String, (f32, f32, f32, f32, u32, u32)>,
+    encoded_map: &[u8],
+    tile_paths: &[String],
+    image_coordinates: &HashMap<String, AtlasLocation>,
     width: usize,
-    height: usize
+    height: usize,
 ) {
     let output_file = fs::File::create(dest_path).unwrap();
     let mut writer = std::io::BufWriter::new(output_file);
     const MAGIC: &[u8; 4] = b"TMAP";
-    writer.write(&MAGIC.as_bytes()).unwrap();
-    writer.write(&(width as u32).to_le_bytes()).unwrap();
-    writer.write(&(height as u32).to_le_bytes()).unwrap();
-    writer.write(&(tile_paths.len() as u32).to_le_bytes()).unwrap();
+    writer.write_all(MAGIC.as_bytes()).unwrap();
+    writer.write_all(&(width as u32).to_le_bytes()).unwrap();
+    writer.write_all(&(height as u32).to_le_bytes()).unwrap();
+    writer
+        .write_all(&(tile_paths.len() as u32).to_le_bytes())
+        .unwrap();
     for path in tile_paths.iter() {
         assert!(image_coordinates.contains_key(path));
         let (left, top, right, bottom, _width, _height) = image_coordinates.get(path).unwrap();
-        println!("Writing tile location for {}: {:?} {:?} {:?} {:?}", path, left, top, right, bottom);
-        writer.write(&left.to_le_bytes()).unwrap();
-        writer.write(&top.to_le_bytes()).unwrap();
-        writer.write(&right.to_le_bytes()).unwrap();
-        writer.write(&bottom.to_le_bytes()).unwrap();
+        println!(
+            "Writing tile location for {}: {:?} {:?} {:?} {:?}",
+            path, left, top, right, bottom
+        );
+        writer.write_all(&left.to_le_bytes()).unwrap();
+        writer.write_all(&top.to_le_bytes()).unwrap();
+        writer.write_all(&right.to_le_bytes()).unwrap();
+        writer.write_all(&bottom.to_le_bytes()).unwrap();
     }
 
-    writer.write(&encoded_map).unwrap();
+    writer.write_all(encoded_map).unwrap();
     writer.flush().unwrap();
 }
