@@ -101,6 +101,8 @@ fn main() {
             gfx::WINDOW_WIDTH as i32,
             gfx::WINDOW_HEIGHT as i32,
         );
+
+        tile_map.draw(&mut context, &visible_rect);
         entity::do_frame(
             &mut entities,
             1.0 / 60.0,
@@ -109,7 +111,6 @@ fn main() {
             &tile_map,
             &visible_rect,
         );
-        tile_map.draw(&mut context, &visible_rect);
         context.render();
     }
 }

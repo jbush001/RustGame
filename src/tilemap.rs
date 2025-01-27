@@ -19,9 +19,11 @@ use std::io::Read;
 use std::path::PathBuf;
 
 const TILE_SIZE: i32 = 64;
+const FLAG_SOLID: u8 = 1;
 
 pub struct TileMap {
     tiles: Vec<u8>,
+    tile_flags: Vec<u8>,
     atlas_coords: Vec<(f32, f32, f32, f32, u32, u32)>,
     width: i32,
     height: i32,
@@ -70,12 +72,16 @@ impl TileMap {
             atlas_coords.push((left, top, right, bottom, TILE_SIZE as u32, TILE_SIZE as u32));
         }
 
+        let mut tile_flags = vec![0; num_tiles as usize];
+        reader.read_exact(&mut tile_flags).unwrap();
+
         // Read tile data
         let mut tiles = vec![0; (width * height) as usize];
         reader.read_exact(&mut tiles).unwrap();
 
         TileMap {
             tiles,
+            tile_flags,
             atlas_coords,
             width,
             height,
@@ -87,7 +93,12 @@ impl TileMap {
             return true;
         }
 
-        self.tiles[((y / TILE_SIZE) * self.width + (x / TILE_SIZE)) as usize] != 0
+        let tile_num = self.tiles[((y / TILE_SIZE) * self.width + (x / TILE_SIZE)) as usize];
+        if tile_num == 0 {
+            return false;
+        }
+
+        self.tile_flags[(tile_num - 1) as usize] & FLAG_SOLID != 0
     }
 
     pub fn draw(&mut self, context: &mut gfx::RenderContext, visible_rect: &(i32, i32, i32, i32)) {

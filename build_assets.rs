@@ -36,7 +36,8 @@ fn main() {
     println!("cargo::rerun-if-changed=build.rs");
 
     let sprite_ids = read_sprite_list("assets/sprites.txt");
-    let (map_width, map_height, encoded_map, tile_paths) = read_tile_map("assets/tiles.txt");
+    let (map_width, map_height, encoded_map, tile_paths, tile_flags)
+        = read_tile_map("assets/tiles.txt");
 
     let mut image_paths: Vec<String> = tile_paths.clone();
     image_paths.extend(sprite_ids.iter().map(|(_, path)| path.clone()));
@@ -75,6 +76,7 @@ fn main() {
         &encoded_map,
         &tile_paths,
         &image_coordinates,
+        &tile_flags,
         map_width,
         map_height,
     );
@@ -101,10 +103,11 @@ fn read_sprite_list(path: &str) -> Vec<(String, String)> {
     sprites
 }
 
-fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>) {
+fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
     let tiles = std::fs::read_to_string(path).unwrap();
     let mut char_to_tile: HashMap<char, usize> = HashMap::new();
     let mut tile_images: Vec<String> = Vec::new();
+    let mut tile_flags: Vec<u8> = Vec::new();
 
     // XXX should scale these based on content.
     const MAP_WIDTH: usize = 64;
@@ -126,9 +129,10 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>) {
         }
 
         if reading_tile_images {
-            let tokens: Vec<&str> = line.split('=').collect();
-            if tokens.len() != 2 {
-                panic!("{}:{}: Invalid line", path, linenum + 1);
+            // Information about each tile type
+            let tokens: Vec<&str> = line.split(' ').collect();
+            if tokens.len() != 3 {
+                panic!("{}:{}: Invalid line: needs 3 fields", path, linenum + 1);
             }
 
             if tokens[0].len() != 1 {
@@ -142,7 +146,9 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>) {
 
             char_to_tile.insert(ch, tile_images.len());
             tile_images.push(tokens[1].trim().to_string());
+            tile_flags.push(tokens[2].trim().parse().unwrap());
         } else {
+            // Filling actual map data
             let map_row = linenum - map_start;
             for (map_col, c) in line.chars().enumerate() {
                 if c != ' ' {
@@ -157,7 +163,7 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>) {
         }
     }
 
-    (MAP_WIDTH, MAP_HEIGHT, encoded_map, tile_images)
+    (MAP_WIDTH, MAP_HEIGHT, encoded_map, tile_images, tile_flags)
 }
 
 // Given a list of paths, return corresponding images.
@@ -240,6 +246,7 @@ fn write_sprite_locations(
 //    height: u32
 //    num_tiles: u32
 //    tile_locs: [(f32, f32, f32, f32), num_tiles]
+//    tile_flags: [u8, num_tiles]
 //    map: [u8; width * height]
 //  "255 tiles should be enough for anyone"
 //
@@ -248,6 +255,7 @@ fn write_map_file(
     encoded_map: &[u8],
     tile_paths: &[String],
     image_coordinates: &HashMap<String, AtlasLocation>,
+    tile_flags: &[u8],
     width: usize,
     height: usize,
 ) {
@@ -273,6 +281,7 @@ fn write_map_file(
         writer.write_all(&bottom.to_le_bytes()).unwrap();
     }
 
+    writer.write_all(tile_flags).unwrap();
     writer.write_all(encoded_map).unwrap();
     writer.flush().unwrap();
 }
