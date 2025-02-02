@@ -32,11 +32,9 @@ pub struct RenderContext {
     atlas_texture_id: GLuint,
     vertices: Vec<f32>,
     offset: (i32, i32),
+    position_attrib: GLuint,
+    texcoord_attrib: GLuint,
 }
-
-// XXX currently hardcoded on MacOS
-const POSITION_ATTRIB: GLuint = 1;
-const TEXCOORD_ATTRIB: GLuint = 0;
 
 const VERTEX_SHADER: &str = r#"
 attribute vec2 aPosition;
@@ -163,13 +161,13 @@ impl RenderContext {
         }
 
         let program = compile_result.unwrap();
-        unsafe {
+        let (position_attrib, texcoord_attrib) = unsafe {
             gl::UseProgram(program);
-
-            // XXX this doesn't do anything apparently on MacOS
-            gl::BindAttribLocation(program, POSITION_ATTRIB, c"aPosition".as_ptr().cast());
-            gl::BindAttribLocation(program, TEXCOORD_ATTRIB, c"aTexcoord".as_ptr().cast());
-        }
+            (
+                gl::GetAttribLocation(program, c"aPosition".as_ptr().cast()) as GLuint,
+                gl::GetAttribLocation(program, c"aTexcoord".as_ptr().cast()) as GLuint,
+            )
+        };
 
         let vbo = unsafe {
             let mut vbo = 0;
@@ -202,6 +200,8 @@ impl RenderContext {
             atlas_texture_id,
             vertices: Vec::new(),
             offset: (0, 0),
+            position_attrib,
+            texcoord_attrib,
         })
     }
 
@@ -307,7 +307,7 @@ impl RenderContext {
 
             // Screen coordinate attribute
             gl::VertexAttribPointer(
-                POSITION_ATTRIB,
+                self.position_attrib,
                 2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
@@ -317,7 +317,7 @@ impl RenderContext {
 
             // Texture coordinate attribute
             gl::VertexAttribPointer(
-                TEXCOORD_ATTRIB,
+                self.texcoord_attrib,
                 2, // Size (elements)
                 gl::FLOAT,
                 gl::FALSE,
