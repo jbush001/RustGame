@@ -16,7 +16,6 @@
 
 use gl::types::{GLint, GLsizeiptr, GLuint};
 use image::ImageReader;
-use sdl2;
 
 // Load all constants pointing to individual images from the texture atlas,
 // which is generated during the build process.
@@ -137,11 +136,6 @@ fn rotate(point: &(f32, f32), matrix: &(f32, f32, f32, f32)) -> (f32, f32) {
 impl RenderContext {
     pub fn new(sdl: &mut sdl2::Sdl) -> Result<Self, String> {
         let video_subsystem = sdl.video().unwrap();
-
-
-        // Note: doubling resolutions here because SDL seems
-        // to be halving them on my system (Chromebook). I think it's some
-        // kind of high-DPI thing. This will probably break on other systems.
         let window = video_subsystem
             .window("Game", WINDOW_WIDTH, WINDOW_HEIGHT)
             .opengl()
@@ -150,10 +144,9 @@ impl RenderContext {
 
         let gl_context = window.gl_create_context().unwrap();
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
-
-        // XXX note this has to be done after gl_create_context.
-        let _ = video_subsystem.gl_set_swap_interval(sdl2::video::SwapInterval::VSync);
-
+        video_subsystem
+            .gl_set_swap_interval(sdl2::video::SwapInterval::VSync)
+            .unwrap();
 
         let compile_result = compile_program(VERTEX_SHADER, FRAGMENT_SHADER);
         if let Err(msg) = compile_result {

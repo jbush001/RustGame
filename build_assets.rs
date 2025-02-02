@@ -36,8 +36,8 @@ fn main() {
     println!("cargo::rerun-if-changed=build.rs");
 
     let sprite_ids = read_sprite_list("assets/sprites.txt");
-    let (map_width, map_height, encoded_map, tile_paths, tile_flags)
-        = read_tile_map("assets/tiles.txt");
+    let (map_width, map_height, encoded_map, tile_paths, tile_flags) =
+        read_tile_map("assets/tiles.txt");
 
     let mut image_paths: Vec<String> = tile_paths.clone();
     image_paths.extend(sprite_ids.iter().map(|(_, path)| path.clone()));
