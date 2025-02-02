@@ -16,6 +16,7 @@
 
 use gl::types::{GLint, GLsizeiptr, GLuint};
 use image::ImageReader;
+use sdl2;
 
 // Load all constants pointing to individual images from the texture atlas,
 // which is generated during the build process.
@@ -33,8 +34,9 @@ pub struct RenderContext {
     offset: (i32, i32),
 }
 
-const POSITION_ATTRIB: GLuint = 0;
-const TEXCOORD_ATTRIB: GLuint = 1;
+// XXX currently hardcoded on MacOS
+const POSITION_ATTRIB: GLuint = 1;
+const TEXCOORD_ATTRIB: GLuint = 0;
 
 const VERTEX_SHADER: &str = r#"
 attribute vec2 aPosition;
@@ -138,17 +140,22 @@ impl RenderContext {
     pub fn new(sdl: &mut sdl2::Sdl) -> Result<Self, String> {
         let video_subsystem = sdl.video().unwrap();
 
+
         // Note: doubling resolutions here because SDL seems
         // to be halving them on my system (Chromebook). I think it's some
         // kind of high-DPI thing. This will probably break on other systems.
         let window = video_subsystem
-            .window("Game", WINDOW_WIDTH * 3, WINDOW_HEIGHT * 3)
+            .window("Game", WINDOW_WIDTH, WINDOW_HEIGHT)
             .opengl()
             .build()
             .unwrap();
 
         let gl_context = window.gl_create_context().unwrap();
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
+
+        // XXX note this has to be done after gl_create_context.
+        let _ = video_subsystem.gl_set_swap_interval(sdl2::video::SwapInterval::VSync);
+
 
         let compile_result = compile_program(VERTEX_SHADER, FRAGMENT_SHADER);
         if let Err(msg) = compile_result {
@@ -158,6 +165,8 @@ impl RenderContext {
         let program = compile_result.unwrap();
         unsafe {
             gl::UseProgram(program);
+
+            // XXX this doesn't do anything apparently on MacOS
             gl::BindAttribLocation(program, POSITION_ATTRIB, c"aPosition".as_ptr().cast());
             gl::BindAttribLocation(program, TEXCOORD_ATTRIB, c"aTexcoord".as_ptr().cast());
         }
