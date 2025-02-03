@@ -51,7 +51,7 @@ fn main() {
     images.sort_by(|a, b| {
         let a = a.1.dimensions();
         let b = b.1.dimensions();
-        a.1.cmp(&b.1)
+        b.1.cmp(&a.1)
     });
 
     let (atlas, image_coordinates) = pack_images(&images);
