@@ -25,6 +25,9 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::Write;
+use std::path::Path;
+
+const TARGET_DIR: &str = "target/debug"; // XXX HACK, hardcoded dest path.
 
 // XXX should scale this based on number of assets...
 const ATLAS_SIZE: u32 = 1024;
@@ -55,12 +58,13 @@ fn main() {
 
     // Write out a rust file with all of the sprite locations. This will be linked
     // into the executable.
-    let out_dir = env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned() + "/assets.rs";
-    write_sprite_locations(&out_dir, &sprite_ids, &image_coordinates);
+    let sprite_define_path =
+        env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned() + "/sprites.rs";
+    write_sprite_locations(&sprite_define_path, &sprite_ids, &image_coordinates);
 
     // Write out the new atlas image.
     let result = image::save_buffer(
-        "target/debug/atlas.png", // XXX HACK, hardcoded dest path.
+        format!("{}/{}", &TARGET_DIR, "atlas.png"),
         &atlas.to_rgba8().into_raw(),
         atlas.width(),
         atlas.height(),
@@ -72,7 +76,7 @@ fn main() {
     }
 
     write_map_file(
-        "target/debug/map.bin",
+        format!("{}/{}", &TARGET_DIR, "map.bin").as_str(),
         &encoded_map,
         &tile_paths,
         &image_coordinates,
@@ -80,6 +84,10 @@ fn main() {
         map_width,
         map_height,
     );
+
+    let audio_define_path =
+        env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned() + "/sounds.rs";
+    copy_audio_files("assets/sound-effects.txt", &audio_define_path);
 }
 
 // Returns a list of identifier->path mappings
@@ -284,4 +292,51 @@ fn write_map_file(
     writer.write_all(tile_flags).unwrap();
     writer.write_all(encoded_map).unwrap();
     writer.flush().unwrap();
+}
+
+fn copy_audio_files(manifest_path: &str, defines_path: &str) {
+    let manifest = std::fs::read_to_string(manifest_path).unwrap();
+    let mut files: Vec<(String, String)> = Vec::new();
+    for line in manifest.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let tokens: Vec<&str> = line.split(' ').collect();
+        if tokens.len() != 2 {
+            panic!("Invalid manifest line: {}", line);
+        }
+
+        files.push((tokens[0].to_string(), tokens[1].to_string()));
+    }
+
+    // Copy the files
+    for (_, path) in files.clone().into_iter() {
+        let source_path = "assets/".to_owned() + &path.clone();
+        let dest = Path::new(&source_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        println!(
+            "Copy {:?} {:?}",
+            &source_path,
+            format!("{}/{}", &TARGET_DIR, dest)
+        );
+        std::fs::copy(&source_path, format!("{}/{}", &TARGET_DIR, dest)).unwrap();
+    }
+
+    // Write a source file
+    let mut defines_file = fs::File::create(defines_path).unwrap();
+    for (index, (name, _path)) in files.clone().into_iter().enumerate() {
+        writeln!(defines_file, "pub const {}: usize = {};", name, index).unwrap();
+    }
+
+    writeln!(defines_file, "const FILE_LIST: [&str; {}] = [", files.len()).unwrap();
+    for (_name, path) in files {
+        writeln!(defines_file, "\"{}\",", path).unwrap();
+    }
+
+    writeln!(defines_file, "];").unwrap();
 }

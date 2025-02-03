@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+mod audio;
 mod entity;
 mod gfx;
 mod tilemap;
@@ -34,6 +35,7 @@ fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
 fn main() {
     let mut sdl = sdl2::init().unwrap();
     let mut context = gfx::RenderContext::new(&mut sdl).unwrap();
+    audio::init_audio();
 
     let exe_path = std::env::current_exe().unwrap();
     let exe_dir = exe_path.parent().unwrap();

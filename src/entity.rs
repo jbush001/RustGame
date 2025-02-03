@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+use crate::audio;
 use crate::gfx;
 use crate::tilemap;
 use std::any::Any;
@@ -214,6 +215,7 @@ impl Entity for Player {
                     velocity,
                 )));
 
+                audio::play_effect(audio::SFX_ARROW);
                 self.bow_drawn = false;
             }
         } else {
@@ -406,7 +408,10 @@ impl Entity for Player {
 
     fn collide(&mut self, _other: &(dyn Entity)) {
         // XXX check type
-        self.killed = true;
+        if !self.killed {
+            self.killed = true;
+            audio::play_effect(audio::SFX_DEATH);
+        }
     }
 
     fn as_any(&self) -> &dyn Any {

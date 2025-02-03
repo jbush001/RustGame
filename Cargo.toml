@@ -10,4 +10,8 @@ image = "0.25.5"
 [dependencies]
 gl = "0.14.0"
 image = "0.25.5"
-sdl2 = "0.37.0"
+
+[dependencies.sdl2]
+version = "0.37.0"
+default-features = false
+features = ["mixer"]

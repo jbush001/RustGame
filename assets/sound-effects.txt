@@ -1,0 +1,2 @@
+SFX_ARROW arrow.wav
+SFX_DEATH death.wav
