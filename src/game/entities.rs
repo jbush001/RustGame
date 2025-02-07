@@ -14,49 +14,13 @@
 // limitations under the License.
 //
 
-use crate::audio;
-use crate::gfx;
-use crate::tilemap;
+use engine::entity;
+use engine::audio;
+use engine::gfx;
+use engine::tilemap;
 use std::any::Any;
 
-pub const CONTROL_UP: u32 = 0x1;
-pub const CONTROL_DOWN: u32 = 0x2;
-pub const CONTROL_LEFT: u32 = 0x4;
-pub const CONTROL_RIGHT: u32 = 0x8;
-pub const CONTROL_FIRE: u32 = 0x10;
-pub const CONTROL_JUMP: u32 = 0x20;
-
 pub const GRAVITY: f32 = 1500.0;
-
-const COLL_MISSILE: u32 = 1;
-const COLL_PLAYER: u32 = 2;
-
-pub trait Entity: Any {
-    fn update(
-        &mut self,
-        d_t: f32,
-        new_entities: &mut Vec<Box<dyn Entity>>,
-        buttons: u32,
-        tile_map: &tilemap::TileMap,
-    );
-    fn draw(&mut self, context: &mut gfx::RenderContext);
-    fn is_live(&self) -> bool;
-
-    // Each bit in this represents a type of entity, which is used
-    // in conjunction with get_collision_mask.
-    fn get_collision_class(&self) -> u32;
-
-    // Each 1 bit in this corresponds to a collision class that this entity
-    // will 'accept' collisions with.
-    fn get_collision_mask(&self) -> u32;
-
-    // Return axis aligned bounding box of this object (left, top, right, bottom)
-    // If two entities bounding boxes overlap they are considered to collide.
-    fn get_bounding_box(&self) -> (f32, f32, f32, f32);
-    fn collide(&mut self, other: &dyn Entity);
-
-    fn as_any(&self) -> &dyn Any;
-}
 
 pub struct Arrow {
     xpos: f32,
@@ -82,11 +46,11 @@ impl Arrow {
     }
 }
 
-impl Entity for Arrow {
+impl entity::Entity for Arrow {
     fn update(
         &mut self,
         d_t: f32,
-        _new_entities: &mut Vec<Box<dyn Entity>>,
+        _new_entities: &mut Vec<Box<dyn entity::Entity>>,
         _buttons: u32,
         tile_map: &tilemap::TileMap,
     ) {
@@ -129,14 +93,14 @@ impl Entity for Arrow {
     }
 
     fn get_collision_class(&self) -> u32 {
-        COLL_MISSILE
+        entity::COLL_MISSILE
     }
 
     fn get_collision_mask(&self) -> u32 {
-        !COLL_MISSILE
+        !entity::COLL_MISSILE
     }
 
-    fn collide(&mut self, _other: &dyn Entity) {
+    fn collide(&mut self, _other: &dyn entity::Entity) {
         self.collided = true;
     }
 
@@ -186,11 +150,11 @@ impl Player {
     }
 }
 
-impl Entity for Player {
+impl entity::Entity for Player {
     fn update(
         &mut self,
         d_t: f32,
-        new_entities: &mut Vec<Box<dyn Entity>>,
+        new_entities: &mut Vec<Box<dyn entity::Entity>>,
         buttons: u32,
         tile_map: &tilemap::TileMap,
     ) {
@@ -198,7 +162,7 @@ impl Entity for Player {
             return;
         }
 
-        if buttons & CONTROL_FIRE == 0 {
+        if buttons & entity::CONTROL_FIRE == 0 {
             // Button not pressed
             if self.bow_drawn {
                 // It was released
@@ -228,11 +192,11 @@ impl Entity for Player {
             }
 
             // Player can adjust angle when bow is drawn.
-            if buttons & CONTROL_UP != 0 && self.angle > -std::f32::consts::PI / 2.0 {
+            if buttons & entity::CONTROL_UP != 0 && self.angle > -std::f32::consts::PI / 2.0 {
                 self.angle -= d_t * std::f32::consts::PI;
             }
 
-            if buttons & CONTROL_DOWN != 0 && self.angle < std::f32::consts::PI / 2.0 {
+            if buttons & entity::CONTROL_DOWN != 0 && self.angle < std::f32::consts::PI / 2.0 {
                 self.angle += d_t * std::f32::consts::PI;
             }
         }
@@ -242,7 +206,7 @@ impl Entity for Player {
             || tile_map.is_solid(self.xpos as i32 + 12, self.ypos as i32 + GROUND_OFFSET);
 
         if self.on_ground {
-            if buttons & CONTROL_JUMP != 0 && !self.last_jump_button {
+            if buttons & entity::CONTROL_JUMP != 0 && !self.last_jump_button {
                 self.yvec = -100.0;
                 self.jump_counter = 0;
             } else {
@@ -253,7 +217,7 @@ impl Entity for Player {
             }
         } else if self.jump_counter < MAX_JUMP_COUNTER {
             // Size of jump is proportional to how long the button is held
-            if buttons & CONTROL_JUMP != 0 {
+            if buttons & entity::CONTROL_JUMP != 0 {
                 self.yvec -= 5000.0 * d_t;
                 self.jump_counter += 1;
             } else {
@@ -268,18 +232,18 @@ impl Entity for Player {
             }
         }
 
-        self.last_jump_button = buttons & CONTROL_JUMP != 0;
+        self.last_jump_button = buttons & entity::CONTROL_JUMP != 0;
         self.ypos += self.yvec * d_t;
 
         // Movement
-        if buttons & CONTROL_LEFT != 0
+        if buttons & entity::CONTROL_LEFT != 0
             && !tile_map.is_solid(self.xpos as i32 - 16, self.ypos as i32 + GROUND_OFFSET - 3)
             && !tile_map.is_solid(self.xpos as i32 - 16, self.ypos as i32 - 15)
         {
             self.xpos -= 150.0 * d_t;
             self.facing_left = true;
             self.is_running = self.on_ground;
-        } else if buttons & CONTROL_RIGHT != 0
+        } else if buttons & entity::CONTROL_RIGHT != 0
             && !tile_map.is_solid(self.xpos as i32 + 16, self.ypos as i32 + GROUND_OFFSET - 3)
             && !tile_map.is_solid(self.xpos as i32 + 16, self.ypos as i32 - 15)
         {
@@ -399,14 +363,14 @@ impl Entity for Player {
     }
 
     fn get_collision_class(&self) -> u32 {
-        COLL_PLAYER
+        entity::COLL_PLAYER
     }
 
     fn get_collision_mask(&self) -> u32 {
-        !COLL_PLAYER
+        !entity::COLL_PLAYER
     }
 
-    fn collide(&mut self, _other: &(dyn Entity)) {
+    fn collide(&mut self, _other: &(dyn entity::Entity)) {
         // XXX check type
         if !self.killed {
             self.killed = true;
@@ -416,60 +380,5 @@ impl Entity for Player {
 
     fn as_any(&self) -> &dyn Any {
         self
-    }
-}
-
-pub fn do_frame(
-    entities: &mut Vec<Box<dyn Entity>>,
-    d_t: f32,
-    context: &mut gfx::RenderContext,
-    buttons: u32,
-    tilemap: &tilemap::TileMap,
-    _visible_rect: &(i32, i32, i32, i32),
-) {
-    handle_collisions(entities);
-    let mut new_entities: Vec<Box<dyn Entity>> = Vec::new();
-    for entity in entities.iter_mut() {
-        entity.update(d_t, &mut new_entities, buttons, tilemap);
-    }
-
-    entities.append(&mut new_entities);
-
-    // XXX despawn things that are too far outsize visible rect
-    entities.retain(|entity| entity.is_live());
-
-    for entity in entities.iter_mut() {
-        entity.draw(context);
-    }
-}
-
-fn overlaps(a1: &(f32, f32, f32, f32), a2: &(f32, f32, f32, f32)) -> bool {
-    let (x1, y1, w1, h1) = *a1;
-    let (x2, y2, w2, h2) = *a2;
-
-    x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2
-}
-
-// Check for objects overlapping and call their collision handlers
-// This is a brute force O(n^2) algorithm. While a broad phase step
-// would reduce the computational complexity, for fairly small
-// numbers of objects this is probably preferable.
-fn handle_collisions(entities: &mut Vec<Box<dyn Entity>>) {
-    for i in 0..entities.len() - 1 {
-        let (arr1, arr2) = entities.split_at_mut(i + 1);
-        let e1 = &mut arr1[i];
-        let b1 = e1.get_bounding_box();
-        for e2 in arr2.iter_mut() {
-            let b2 = e2.get_bounding_box();
-            if overlaps(&b1, &b2) {
-                if (e1.get_collision_mask() & e2.get_collision_class()) != 0 {
-                    e1.collide(e2.as_ref());
-                }
-
-                if (e2.get_collision_mask() & e1.get_collision_class()) != 0 {
-                    e2.collide(e1.as_ref());
-                }
-            }
-        }
     }
 }

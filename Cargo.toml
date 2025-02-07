@@ -7,6 +7,14 @@ build = "build_assets.rs"
 [build-dependencies]
 image = "0.25.5"
 
+[lib]
+name = "engine"
+path = "src/engine/lib.rs"
+
+[[bin]]
+name = "game"
+path = "src/game/main.rs"
+
 [dependencies]
 gl = "0.14.0"
 image = "0.25.5"
