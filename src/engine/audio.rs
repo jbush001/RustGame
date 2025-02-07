@@ -20,7 +20,6 @@ use sdl2::mixer;
 
 static mut EFFECTS: Vec<mixer::Chunk> = Vec::new();
 
-
 pub fn init_audio(audio_file_list: &[&str]) {
     mixer::open_audio(44100, mixer::AUDIO_S16LSB, mixer::DEFAULT_CHANNELS, 1024).unwrap();
     mixer::init(mixer::InitFlag::MP3).unwrap();
@@ -30,14 +29,14 @@ pub fn init_audio(audio_file_list: &[&str]) {
     let exe_path = std::env::current_exe().unwrap();
     let exe_dir = exe_path.parent().unwrap();
     for path in audio_file_list {
-        unsafe { EFFECTS.push(mixer::Chunk::from_file(exe_dir.join(path)).unwrap()); }
+        let chunk = mixer::Chunk::from_file(exe_dir.join(path)).unwrap();
+        unsafe {
+            EFFECTS.push(chunk);
+        }
     }
 }
 
 pub fn play_effect(num: usize) {
-    unsafe {
-        sdl2::mixer::Channel::all()
-        .play(&EFFECTS[num], 0)
-        .unwrap();
-    }
+    let fx = unsafe { &EFFECTS[num] };
+    sdl2::mixer::Channel::all().play(fx, 0).unwrap();
 }

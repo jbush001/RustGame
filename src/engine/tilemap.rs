@@ -58,7 +58,6 @@ impl TileMap {
         reader.read_exact(&mut buf).unwrap();
         let num_tiles = i32::from_le_bytes(buf);
         let mut atlas_coords = Vec::new();
-        println!("num_tiles: {}", num_tiles);
         for _ in 0..num_tiles {
             reader.read_exact(&mut buf).unwrap();
             let left = f32::from_le_bytes(buf);

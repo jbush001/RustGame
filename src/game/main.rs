@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-mod entities;
 mod assets;
+mod entities;
 use engine::*;
 
 fn main() {

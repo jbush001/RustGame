@@ -14,11 +14,11 @@
 // limitations under the License.
 //
 
-use engine::entity;
+use crate::assets;
 use engine::audio;
+use engine::entity;
 use engine::gfx;
 use engine::tilemap;
-use crate::assets;
 use std::any::Any;
 
 pub const GRAVITY: f32 = 1500.0;
@@ -74,7 +74,10 @@ impl entity::Entity for Arrow {
             (self.xpos as i32, self.ypos as i32),
             &assets::SPR_ARROW,
             self.angle + self.wobble.sin() * 0.1,
-            (assets::SPR_ARROW.4 as i32 / 2, assets::SPR_ARROW.5 as i32 / 2),
+            (
+                assets::SPR_ARROW.4 as i32 / 2,
+                assets::SPR_ARROW.5 as i32 / 2,
+            ),
             false,
         );
     }
