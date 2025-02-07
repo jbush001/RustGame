@@ -46,9 +46,9 @@ fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
 }
 
 impl GameEngine {
-    pub fn new() -> GameEngine {
+    pub fn new(audio_file_list: &[&str]) -> GameEngine {
         let mut sdl = sdl2::init().unwrap();
-        audio::init_audio();
+        audio::init_audio(audio_file_list);
 
         let exe_path = std::env::current_exe().unwrap();
         let exe_dir = exe_path.parent().unwrap();

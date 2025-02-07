@@ -18,6 +18,7 @@ use engine::entity;
 use engine::audio;
 use engine::gfx;
 use engine::tilemap;
+use crate::assets;
 use std::any::Any;
 
 pub const GRAVITY: f32 = 1500.0;
@@ -71,9 +72,9 @@ impl entity::Entity for Arrow {
     fn draw(&mut self, context: &mut gfx::RenderContext) {
         context.draw_image(
             (self.xpos as i32, self.ypos as i32),
-            &gfx::SPR_ARROW,
+            &assets::SPR_ARROW,
             self.angle + self.wobble.sin() * 0.1,
-            (gfx::SPR_ARROW.4 as i32 / 2, gfx::SPR_ARROW.5 as i32 / 2),
+            (assets::SPR_ARROW.4 as i32 / 2, assets::SPR_ARROW.5 as i32 / 2),
             false,
         );
     }
@@ -179,7 +180,7 @@ impl entity::Entity for Player {
                     velocity,
                 )));
 
-                audio::play_effect(audio::SFX_ARROW);
+                audio::play_effect(assets::SFX_ARROW);
                 self.bow_drawn = false;
             }
         } else {
@@ -272,7 +273,7 @@ impl entity::Entity for Player {
         if self.killed {
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
-                &gfx::SPR_PLAYER_DEAD,
+                &assets::SPR_PLAYER_DEAD,
                 0.0,
                 (33, 20),
                 false,
@@ -284,7 +285,7 @@ impl entity::Entity for Player {
             // Draw bow on back
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
-                &gfx::SPR_BOW_ON_BACK,
+                &assets::SPR_BOW_ON_BACK,
                 0.0,
                 (33, 20),
                 self.facing_left,
@@ -292,16 +293,16 @@ impl entity::Entity for Player {
         }
 
         let body_image = if !self.on_ground {
-            &gfx::SPR_PLAYER_BODY_JUMP
+            &assets::SPR_PLAYER_BODY_JUMP
         } else if self.is_running {
             match self.run_frame {
-                0 => &gfx::SPR_PLAYER_BODY_RUN1,
-                1 => &gfx::SPR_PLAYER_BODY_RUN2,
-                2 => &gfx::SPR_PLAYER_BODY_RUN3,
-                _ => &gfx::SPR_PLAYER_BODY_RUN1,
+                0 => &assets::SPR_PLAYER_BODY_RUN1,
+                1 => &assets::SPR_PLAYER_BODY_RUN2,
+                2 => &assets::SPR_PLAYER_BODY_RUN3,
+                _ => &assets::SPR_PLAYER_BODY_RUN1,
             }
         } else {
-            &gfx::SPR_PLAYER_BODY_IDLE
+            &assets::SPR_PLAYER_BODY_IDLE
         };
 
         context.draw_image(
@@ -320,7 +321,7 @@ impl entity::Entity for Player {
             };
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
-                &gfx::SPR_BOW_DRAWN,
+                &assets::SPR_BOW_DRAWN,
                 angle,
                 (33, 20),
                 self.facing_left,
@@ -328,13 +329,13 @@ impl entity::Entity for Player {
         } else {
             let arms_image = if self.is_running {
                 match self.run_frame {
-                    0 => &gfx::SPR_ARMS_RUN1,
-                    1 => &gfx::SPR_ARMS_RUN2,
-                    2 => &gfx::SPR_ARMS_RUN3,
-                    _ => &gfx::SPR_ARMS_RUN1,
+                    0 => &assets::SPR_ARMS_RUN1,
+                    1 => &assets::SPR_ARMS_RUN2,
+                    2 => &assets::SPR_ARMS_RUN3,
+                    _ => &assets::SPR_ARMS_RUN1,
                 }
             } else {
-                &gfx::SPR_ARMS_IDLE
+                &assets::SPR_ARMS_IDLE
             };
 
             context.draw_image(
@@ -374,7 +375,7 @@ impl entity::Entity for Player {
         // XXX check type
         if !self.killed {
             self.killed = true;
-            audio::play_effect(audio::SFX_DEATH);
+            audio::play_effect(assets::SFX_DEATH);
         }
     }
 

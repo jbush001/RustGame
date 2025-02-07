@@ -17,10 +17,6 @@
 use gl::types::{GLint, GLsizeiptr, GLuint};
 use image::ImageReader;
 
-// Load all constants pointing to individual images from the texture atlas,
-// which is generated during the build process.
-include!(concat!(env!("OUT_DIR"), "/sprites.rs"));
-
 pub const WINDOW_WIDTH: u32 = 800;
 pub const WINDOW_HEIGHT: u32 = 450;
 

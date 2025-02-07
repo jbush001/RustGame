@@ -14,12 +14,9 @@
 // limitations under the License.
 //
 
-mod entities;
-mod assets;
-use engine::*;
+// Definitions for asset constants are in
+// assets/sprites.txt, assets/tiles.txt, assets/sound-effects.txt
 
-fn main() {
-    let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
-    eng.spawn_entity(Box::new(entities::Player::new()));
-    eng.run();
-}
+include!(concat!(env!("OUT_DIR"), "/sprites.rs"));
+
+include!(concat!(env!("OUT_DIR"), "/sounds.rs"));

@@ -333,7 +333,7 @@ fn copy_audio_files(manifest_path: &str, defines_path: &str) {
         writeln!(defines_file, "pub const {}: usize = {};", name, index).unwrap();
     }
 
-    writeln!(defines_file, "const FILE_LIST: [&str; {}] = [", files.len()).unwrap();
+    writeln!(defines_file, "pub const AUDIO_FILE_LIST: [&str; {}] = [", files.len()).unwrap();
     for (_name, path) in files {
         writeln!(defines_file, "\"{}\",", path).unwrap();
     }

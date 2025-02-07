@@ -24,7 +24,7 @@ include!(concat!(env!("OUT_DIR"), "/sounds.rs"));
 static mut EFFECTS: Vec<mixer::Chunk> = Vec::new();
 
 
-pub fn init_audio() {
+pub fn init_audio(audio_file_list: &[&str]) {
     mixer::open_audio(44100, mixer::AUDIO_S16LSB, mixer::DEFAULT_CHANNELS, 1024).unwrap();
     mixer::init(mixer::InitFlag::MP3).unwrap();
 
@@ -32,7 +32,7 @@ pub fn init_audio() {
 
     let exe_path = std::env::current_exe().unwrap();
     let exe_dir = exe_path.parent().unwrap();
-    for path in FILE_LIST {
+    for path in audio_file_list {
         unsafe { EFFECTS.push(mixer::Chunk::from_file(exe_dir.join(path)).unwrap()); }
     }
 }
