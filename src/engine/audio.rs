@@ -18,9 +18,6 @@ extern crate sdl2;
 
 use sdl2::mixer;
 
-// Constants and file paths
-include!(concat!(env!("OUT_DIR"), "/sounds.rs"));
-
 static mut EFFECTS: Vec<mixer::Chunk> = Vec::new();
 
 
