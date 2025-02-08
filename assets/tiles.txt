@@ -1,16 +1,14 @@
 X tile-brick.png 1
 . tile-water.png 0
 ------
-X                                       X
-X                                       X
-X        X  X                           X
-X       XX  X...........................X
-X      XXX  X...........................X
-X     XXXX  XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-X....XXXXX                              X
-X...XXXXXX                              X
-XXXXXXXXXX                              X
-X                                       X
-X                                       X
-X                                       X
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+X                                                                                X
+X                                                                                X
+X                                                                                X
+X                                                                                X
+X                                                                                X
+X                                                                                X
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXX  X  X  X  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXX..X..X..X..XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXX...........XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

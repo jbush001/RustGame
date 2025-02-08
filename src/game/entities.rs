@@ -134,11 +134,11 @@ const RUN_FRAME_DURATION: f32 = 0.1;
 const MAX_JUMP_COUNTER: u32 = 5;
 
 impl Player {
-    pub fn new() -> Player {
+    pub fn new(xpos: f32, ypos: f32) -> Player {
         Player {
             angle: -std::f32::consts::PI / 4.0,
-            xpos: 128.0,
-            ypos: 128.0,
+            xpos,
+            ypos,
             bow_drawn: false,
             bow_draw_time: 0.0,
             facing_left: false,

@@ -20,10 +20,10 @@ pub mod gfx;
 pub mod tilemap;
 extern crate sdl2;
 
-const LEFT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 / 4;
-const RIGHT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 * 3 / 4;
-const TOP_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 / 4;
-const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 * 3 / 4;
+const LEFT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 / 3;
+const RIGHT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 * 2 / 3;
+const TOP_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 / 3;
+const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 * 2 / 3;
 
 pub struct GameEngine {
     _sdl: sdl2::Sdl,

@@ -21,8 +21,8 @@ use engine::*;
 fn main() {
     let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
     // XXX player always needs to be first entity spawned
-    eng.spawn_entity(Box::new(entities::Player::new()));
+    eng.spawn_entity(Box::new(entities::Player::new(128.0, 320.0)));
+    eng.spawn_entity(Box::new(entities::Balloon::new(512.0, 128.0)));
 
-    eng.spawn_entity(Box::new(entities::Balloon::new(128.0, 256.0)));
     eng.run();
 }

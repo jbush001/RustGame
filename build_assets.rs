@@ -117,14 +117,10 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
     let mut tile_images: Vec<String> = Vec::new();
     let mut tile_flags: Vec<u8> = Vec::new();
 
-    // XXX should scale these based on content.
-    const MAP_WIDTH: usize = 64;
-    const MAP_HEIGHT: usize = 64;
-
-    let mut encoded_map = vec![0u8; MAP_WIDTH * MAP_HEIGHT];
     let mut reading_tile_images = true;
-    let mut map_start = 0;
 
+    let mut map_data: Vec<Vec<u8>> = Vec::new();
+    let mut map_width = 0;
     for (linenum, line) in tiles.lines().enumerate() {
         if line.starts_with("------") {
             if !reading_tile_images {
@@ -132,7 +128,6 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
             }
 
             reading_tile_images = false;
-            map_start = linenum + 1;
             continue;
         }
 
@@ -157,21 +152,41 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
             tile_flags.push(tokens[2].trim().parse().unwrap());
         } else {
             // Filling actual map data
-            let map_row = linenum - map_start;
+            let mut row: Vec<u8> = Vec::new();
             for (map_col, c) in line.chars().enumerate() {
-                if c != ' ' {
+                let tile_index = if c == ' ' {
+                    0
+                } else {
                     if !char_to_tile.contains_key(&c) {
                         panic!("{}:{}: Invalid tile character", path, linenum + 1);
                     }
 
-                    let tile_index = char_to_tile.get(&c).unwrap() + 1;
-                    encoded_map[map_row * MAP_WIDTH + map_col] = tile_index as u8;
-                }
+                    char_to_tile.get(&c).unwrap() + 1
+                };
+
+                row.push(tile_index as u8);
             }
+
+            if row.len() > map_width {
+                map_width = row.len();
+            }
+
+            map_data.push(row);
         }
     }
 
-    (MAP_WIDTH, MAP_HEIGHT, encoded_map, tile_images, tile_flags)
+    // Flatten the map
+    let map_height = map_data.len();
+    let mut encoded_map: Vec<u8> = Vec::new();
+    for row in map_data {
+        encoded_map.extend(row.clone().into_iter());
+        let padding = map_width - row.len();
+        if padding > 0 {
+            encoded_map.extend(std::iter::repeat(0).take(padding));
+        }
+    }
+
+    (map_width, map_height, encoded_map, tile_images, tile_flags)
 }
 
 // Given a list of paths, return corresponding images.
