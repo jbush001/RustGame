@@ -386,3 +386,70 @@ impl entity::Entity for Player {
         self
     }
 }
+
+pub struct Balloon {
+    xpos: f32,
+    ypos: f32,
+    buoyancy: f32,
+    popped: bool,
+}
+
+impl Balloon {
+    pub fn new(x: f32, y: f32) -> Balloon {
+        Balloon {
+            xpos: x,
+            ypos: y,
+            buoyancy: 0.0,
+            popped: false,
+        }
+    }
+}
+
+impl entity::Entity for Balloon {
+    fn update(
+        &mut self,
+        d_t: f32,
+        new_entities: &mut Vec<Box<dyn entity::Entity>>,
+        buttons: u32,
+        tile_map: &tilemap::TileMap,
+    ) {
+        self.buoyancy += 0.03;
+        self.ypos += self.buoyancy.sin() * 2.0;
+    }
+
+    fn draw(&mut self, context: &mut gfx::RenderContext) {
+        context.draw_image(
+            (self.xpos as i32, self.ypos as i32),
+            &assets::SPR_BALLOON,
+            0.0,
+            (31, 21),
+            false,
+        );
+    }
+
+    fn is_live(&self) -> bool {
+        !self.popped
+    }
+
+    fn get_collision_class(&self) -> u32 {
+        entity::COLL_OBJ
+    }
+
+    fn get_collision_mask(&self) -> u32 {
+        entity::COLL_MISSILE
+    }
+
+    fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
+        (self.xpos + 20.0, self.ypos + 8.0, 23.0, 32.0)
+    }
+
+    fn collide(&mut self, other: &dyn entity::Entity) {
+        self.popped = true;
+        audio::play_effect(assets::SFX_POP);
+        // XXX start an animation
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
