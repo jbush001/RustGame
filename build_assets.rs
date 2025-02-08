@@ -27,14 +27,16 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-const TARGET_DIR: &str = "target/debug"; // XXX HACK, hardcoded dest path.
-
 // XXX should scale this based on number of assets...
 const ATLAS_SIZE: u32 = 1024;
 
 type AtlasLocation = (f32, f32, f32, f32, u32, u32);
 
 fn main() {
+    let build_dir = env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned();
+    let target_dir = Path::new(&build_dir).parent().unwrap().parent().unwrap().parent().unwrap().to_str().unwrap().to_owned();
+    println!("build dir {} target_dir {}", build_dir, target_dir);
+
     println!("cargo::rerun-if-changed=assets/");
     println!("cargo::rerun-if-changed=build.rs");
 
@@ -58,13 +60,12 @@ fn main() {
 
     // Write out a rust file with all of the sprite locations. This will be linked
     // into the executable.
-    let sprite_define_path =
-        env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned() + "/sprites.rs";
+    let sprite_define_path = build_dir.clone() + "/sprites.rs";
     write_sprite_locations(&sprite_define_path, &sprite_ids, &image_coordinates);
 
     // Write out the new atlas image.
     let result = image::save_buffer(
-        format!("{}/{}", &TARGET_DIR, "atlas.png"),
+        format!("{}/{}", &target_dir, "atlas.png"),
         &atlas.to_rgba8().into_raw(),
         atlas.width(),
         atlas.height(),
@@ -76,7 +77,7 @@ fn main() {
     }
 
     write_map_file(
-        format!("{}/{}", &TARGET_DIR, "map.bin").as_str(),
+        format!("{}/{}", &target_dir, "map.bin").as_str(),
         &encoded_map,
         &tile_paths,
         &image_coordinates,
@@ -85,9 +86,8 @@ fn main() {
         map_height,
     );
 
-    let audio_define_path =
-        env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned() + "/sounds.rs";
-    copy_audio_files("assets/sound-effects.txt", &audio_define_path);
+    let audio_define_path = build_dir.clone() + "/sounds.rs";
+    copy_audio_files("assets/sound-effects.txt", &audio_define_path, &target_dir);
 }
 
 // Returns a list of identifier->path mappings
@@ -294,7 +294,7 @@ fn write_map_file(
     writer.flush().unwrap();
 }
 
-fn copy_audio_files(manifest_path: &str, defines_path: &str) {
+fn copy_audio_files(manifest_path: &str, defines_path: &str, output_dir: &str) {
     let manifest = std::fs::read_to_string(manifest_path).unwrap();
     let mut files: Vec<(String, String)> = Vec::new();
     for line in manifest.lines() {
@@ -322,9 +322,9 @@ fn copy_audio_files(manifest_path: &str, defines_path: &str) {
         println!(
             "Copy {:?} {:?}",
             &source_path,
-            format!("{}/{}", &TARGET_DIR, dest)
+            format!("{}/{}", output_dir, dest)
         );
-        std::fs::copy(&source_path, format!("{}/{}", &TARGET_DIR, dest)).unwrap();
+        std::fs::copy(&source_path, format!("{}/{}", output_dir, dest)).unwrap();
     }
 
     // Write a source file
