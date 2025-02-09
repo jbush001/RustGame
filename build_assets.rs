@@ -296,8 +296,8 @@ fn pack_images(
             (
                 x as f32 / ATLAS_SIZE as f32,
                 y as f32 / ATLAS_SIZE as f32,
-                (x + img.width() - 1) as f32 / ATLAS_SIZE as f32,
-                (y + img.height() - 1) as f32 / ATLAS_SIZE as f32,
+                (x + img.width()) as f32 / ATLAS_SIZE as f32,
+                (y + img.height()) as f32 / ATLAS_SIZE as f32,
                 img.width(),
                 img.height(),
             ),
