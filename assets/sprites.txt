@@ -13,4 +13,4 @@ SPR_PLAYER_BODY_JUMP body-jump.png 16 20
 SPR_PLAYER_DEAD body-dead.png 28 -32
 SPR_PLAYER_CLIMB1 climb1.png 16 20
 SPR_PLAYER_CLIMB2 climb2.png 16 20
-SPR_BALLOON balloon.png 31 21
+SPR_BALLOON balloon.png 12 21
