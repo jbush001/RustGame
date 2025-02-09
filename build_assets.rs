@@ -34,7 +34,16 @@ type AtlasLocation = (f32, f32, f32, f32, u32, u32);
 
 fn main() {
     let build_dir = env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned();
-    let target_dir = Path::new(&build_dir).parent().unwrap().parent().unwrap().parent().unwrap().to_str().unwrap().to_owned();
+    let target_dir = Path::new(&build_dir)
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
     println!("build dir {} target_dir {}", build_dir, target_dir);
 
     println!("cargo::rerun-if-changed=assets/");
@@ -153,7 +162,7 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
         } else {
             // Filling actual map data
             let mut row: Vec<u8> = Vec::new();
-            for (map_col, c) in line.chars().enumerate() {
+            for c in line.chars() {
                 let tile_index = if c == ' ' {
                     0
                 } else {

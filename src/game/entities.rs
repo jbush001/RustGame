@@ -189,12 +189,11 @@ impl entity::Entity for Player {
             }
 
             return;
-        } else if on_ladder {
-            if buttons & entity::CONTROL_UP != 0
-                || buttons & entity::CONTROL_DOWN != 0 {
-                self.climbing = true;
-                return;
-            }
+        } else if on_ladder
+            && (buttons & entity::CONTROL_UP != 0 || buttons & entity::CONTROL_DOWN != 0)
+        {
+            self.climbing = true;
+            return;
         }
 
         if buttons & entity::CONTROL_FIRE == 0 {
@@ -456,12 +455,12 @@ impl entity::Entity for Balloon {
     fn update(
         &mut self,
         d_t: f32,
-        new_entities: &mut Vec<Box<dyn entity::Entity>>,
-        buttons: u32,
-        tile_map: &tilemap::TileMap,
+        _new_entities: &mut Vec<Box<dyn entity::Entity>>,
+        _buttons: u32,
+        _tile_map: &tilemap::TileMap,
     ) {
-        self.buoyancy += 0.03;
-        self.ypos += self.buoyancy.sin() * 2.0;
+        self.buoyancy += d_t;
+        self.ypos += self.buoyancy.sin() * 0.5;
     }
 
     fn draw(&mut self, context: &mut gfx::RenderContext) {
@@ -490,7 +489,7 @@ impl entity::Entity for Balloon {
         (self.xpos + 20.0, self.ypos + 8.0, 23.0, 32.0)
     }
 
-    fn collide(&mut self, other: &dyn entity::Entity) {
+    fn collide(&mut self, _other: &dyn entity::Entity) {
         self.popped = true;
         audio::play_effect(assets::SFX_POP);
         // XXX start an animation
