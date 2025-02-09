@@ -74,10 +74,6 @@ impl entity::Entity for Arrow {
             (self.xpos as i32, self.ypos as i32),
             &assets::SPR_ARROW,
             self.angle + self.wobble.sin() * 0.1,
-            (
-                assets::SPR_ARROW.4 as i32 / 2,
-                assets::SPR_ARROW.5 as i32 / 2,
-            ),
             false,
         );
     }
@@ -308,7 +304,6 @@ impl entity::Entity for Player {
                 (self.xpos as i32, self.ypos as i32),
                 &assets::SPR_PLAYER_DEAD,
                 0.0,
-                (33, 20),
                 false,
             );
             return;
@@ -320,13 +315,7 @@ impl entity::Entity for Player {
             } else {
                 &assets::SPR_PLAYER_CLIMB2
             };
-            context.draw_image(
-                (self.xpos as i32, self.ypos as i32),
-                sprite,
-                0.0,
-                (33, 20),
-                false,
-            );
+            context.draw_image((self.xpos as i32, self.ypos as i32), sprite, 0.0, false);
             return;
         }
 
@@ -336,7 +325,6 @@ impl entity::Entity for Player {
                 (self.xpos as i32, self.ypos as i32),
                 &assets::SPR_BOW_ON_BACK,
                 0.0,
-                (33, 20),
                 self.facing_left,
             );
         }
@@ -358,7 +346,6 @@ impl entity::Entity for Player {
             (self.xpos as i32, self.ypos as i32),
             body_image,
             0.0,
-            (33, 20),
             self.facing_left,
         );
 
@@ -372,7 +359,6 @@ impl entity::Entity for Player {
                 (self.xpos as i32, self.ypos as i32),
                 &assets::SPR_BOW_DRAWN,
                 angle,
-                (33, 20),
                 self.facing_left,
             );
         } else {
@@ -391,7 +377,6 @@ impl entity::Entity for Player {
                 (self.xpos as i32, self.ypos as i32),
                 arms_image,
                 0.0,
-                (33, 20),
                 self.facing_left,
             );
         }
@@ -468,7 +453,6 @@ impl entity::Entity for Balloon {
             (self.xpos as i32, self.ypos as i32),
             &assets::SPR_BALLOON,
             0.0,
-            (31, 21),
             false,
         );
     }

@@ -202,12 +202,20 @@ impl RenderContext {
     pub fn draw_image(
         &mut self,
         position: (i32, i32),
-        image_info: &(f32, f32, f32, f32, u32, u32),
+        image_info: &(f32, f32, f32, f32, u32, u32, i32, i32),
         rotation: f32,
-        origin: (i32, i32),
         flip_h: bool,
     ) {
-        let (mut atlas_left, atlas_top, mut atlas_right, atlas_bottom, width, height) = *image_info;
+        let (
+            mut atlas_left,
+            atlas_top,
+            mut atlas_right,
+            atlas_bottom,
+            width,
+            height,
+            originx,
+            originy,
+        ) = *image_info;
 
         let position = (position.0 - self.offset.0, position.1 - self.offset.1);
 
@@ -226,8 +234,8 @@ impl RenderContext {
         // +------+
         // 2      3
 
-        let display_left = -origin.0 as f32;
-        let display_top = -origin.1 as f32;
+        let display_left = -originx as f32;
+        let display_top = -originy as f32;
         let display_right = display_left + width as f32;
         let display_bottom = display_top + height as f32;
 

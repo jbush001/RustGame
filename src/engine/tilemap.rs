@@ -26,7 +26,7 @@ const FLAG_LADDER: u8 = 2;
 pub struct TileMap {
     tiles: Vec<u8>,
     tile_flags: Vec<u8>,
-    atlas_coords: Vec<(f32, f32, f32, f32, u32, u32)>,
+    atlas_coords: Vec<(f32, f32, f32, f32, u32, u32, i32, i32)>,
     width: i32,
     height: i32,
 }
@@ -70,7 +70,16 @@ impl TileMap {
             reader.read_exact(&mut buf).unwrap();
             let bottom = f32::from_le_bytes(buf);
 
-            atlas_coords.push((left, top, right, bottom, TILE_SIZE as u32, TILE_SIZE as u32));
+            atlas_coords.push((
+                left,
+                top,
+                right,
+                bottom,
+                TILE_SIZE as u32,
+                TILE_SIZE as u32,
+                0,
+                0,
+            ));
         }
 
         let mut tile_flags = vec![0; num_tiles as usize];
@@ -126,7 +135,6 @@ impl TileMap {
                         (TILE_SIZE * x, TILE_SIZE * y),
                         &self.atlas_coords[tile as usize - 1],
                         0.0,
-                        (0, 0),
                         false,
                     );
                 }

@@ -27,9 +27,6 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-// XXX should scale this based on number of assets...
-const ATLAS_SIZE: u32 = 1024;
-
 type AtlasLocation = (f32, f32, f32, f32, u32, u32);
 
 fn main() {
@@ -54,7 +51,7 @@ fn main() {
         read_tile_map("assets/tiles.txt");
 
     let mut image_paths: Vec<String> = tile_paths.clone();
-    image_paths.extend(sprite_ids.iter().map(|(_, path)| path.clone()));
+    image_paths.extend(sprite_ids.iter().map(|(_, path, _, _)| path.clone()));
 
     let mut images = load_images(&image_paths);
 
@@ -100,8 +97,8 @@ fn main() {
 }
 
 // Returns a list of identifier->path mappings
-fn read_sprite_list(path: &str) -> Vec<(String, String)> {
-    let mut sprites: Vec<(String, String)> = Vec::new();
+fn read_sprite_list(path: &str) -> Vec<(String, String, i32, i32)> {
+    let mut sprites: Vec<(String, String, i32, i32)> = Vec::new();
     let manifest = std::fs::read_to_string(path).unwrap();
     for line in manifest.lines() {
         let line = line.trim();
@@ -110,11 +107,16 @@ fn read_sprite_list(path: &str) -> Vec<(String, String)> {
         }
 
         let tokens: Vec<&str> = line.split(' ').collect();
-        if tokens.len() != 2 {
+        if tokens.len() != 4 {
             panic!("Invalid manifest line: {}", line);
         }
 
-        sprites.push((tokens[0].to_string(), tokens[1].to_string()));
+        sprites.push((
+            tokens[0].to_string(),
+            tokens[1].to_string(),
+            tokens[2].parse::<i32>().unwrap(),
+            tokens[3].parse::<i32>().unwrap(),
+        ));
     }
 
     sprites
@@ -213,28 +215,80 @@ fn load_images(filenames: &[String]) -> Vec<(String, DynamicImage)> {
     images
 }
 
+struct AtlasAllocator {
+    free_regions: Vec<(u32, u32, u32, u32)>,
+}
+
+impl AtlasAllocator {
+    fn new(width: u32, height: u32) -> AtlasAllocator {
+        let mut free_regions: Vec<(u32, u32, u32, u32)> = Vec::new();
+        free_regions.push((0, 0, width, height));
+        AtlasAllocator { free_regions }
+    }
+
+    fn alloc(&mut self, sprite_width: u32, sprite_height: u32) -> (u32, u32) {
+        // First fit allocator
+        for index in 0..self.free_regions.len() {
+            let (region_left, region_top, region_width, region_height) =
+                self.free_regions[index].clone();
+            if region_width >= sprite_width && region_height >= sprite_height {
+                self.free_regions.remove(index);
+
+                // If there are left over regions after carving up this
+                // block, stick them back into the list (in order)
+                // +-----+------------+
+                // |/////|     A      |
+                // +-----+------------+
+                // |        B         |
+                // +------------------+
+                //
+                if region_height > sprite_height {
+                    // B
+                    self.free_regions.insert(
+                        index,
+                        (
+                            region_left,
+                            region_top + sprite_height,
+                            region_width,
+                            region_height - sprite_height,
+                        ),
+                    );
+                }
+
+                if region_width > sprite_width {
+                    // A
+                    self.free_regions.insert(
+                        index,
+                        (
+                            region_left + sprite_width,
+                            region_top,
+                            region_width - sprite_width,
+                            sprite_height,
+                        ),
+                    );
+                }
+
+                return (region_left, region_top);
+            }
+        }
+
+        panic!(
+            "Atlas full, trying to allocate {}x{}, regions {:?}",
+            sprite_width, sprite_height, self.free_regions
+        );
+    }
+}
+
 fn pack_images(
     images: &[(String, DynamicImage)],
 ) -> (DynamicImage, HashMap<String, AtlasLocation>) {
     const BORDER_SIZE: u32 = 2;
+    const ATLAS_SIZE: u32 = 512;
     let mut atlas = DynamicImage::new_rgba8(ATLAS_SIZE, ATLAS_SIZE);
+    let mut allocator = AtlasAllocator::new(ATLAS_SIZE, ATLAS_SIZE);
     let mut image_coordinates: HashMap<String, AtlasLocation> = HashMap::new();
-    let mut x = BORDER_SIZE;
-    let mut y = BORDER_SIZE;
-    let mut row_height = images[0].1.height();
     for (name, img) in images.iter() {
-        if x + img.width() > atlas.width() {
-            x = BORDER_SIZE;
-            y += row_height + BORDER_SIZE;
-            // Because these are sorted by row height, we know none of the subsequent
-            // images in the row will be larger.
-            row_height = img.height();
-        }
-
-        if y + img.height() > atlas.height() {
-            panic!("Out of space in atlas");
-        }
-
+        let (x, y) = allocator.alloc(img.width() + BORDER_SIZE, img.height() + BORDER_SIZE);
         let _ = atlas.copy_from(img, x, y);
         println!("Packing image {} at {},{}", name, x, y);
         image_coordinates.insert(
@@ -248,7 +302,6 @@ fn pack_images(
                 img.height(),
             ),
         );
-        x += img.width() + BORDER_SIZE;
     }
 
     (atlas, image_coordinates)
@@ -256,16 +309,16 @@ fn pack_images(
 
 fn write_sprite_locations(
     dest_path: &str,
-    sprite_ids: &Vec<(String, String)>,
+    sprite_ids: &Vec<(String, String, i32, i32)>,
     image_coordinates: &HashMap<String, AtlasLocation>,
 ) {
     let mut file = fs::File::create(dest_path).unwrap();
-    for (name, path) in sprite_ids {
+    for (name, path, xorigin, yorigin) in sprite_ids {
         let (left, top, right, bottom, width, height) = *image_coordinates.get(path).unwrap();
         writeln!(
             file,
-            "pub const {}: (f32, f32, f32, f32, u32, u32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
-            name, left, top, right, bottom, width, height,
+            "pub const {}: (f32, f32, f32, f32, u32, u32, i32, i32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
+            name, left, top, right, bottom, width, height, xorigin, yorigin
         )
         .unwrap();
     }
