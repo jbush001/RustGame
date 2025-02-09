@@ -486,7 +486,7 @@ impl entity::Entity for Balloon {
     }
 
     fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
-        (self.xpos + 20.0, self.ypos + 8.0, 23.0, 32.0)
+        (self.xpos - 10.0, self.ypos - 15.0, 20.0, 30.0)
     }
 
     fn collide(&mut self, _other: &dyn entity::Entity) {
