@@ -128,6 +128,7 @@ pub struct Player {
     yvec: f32,
     last_jump_button: bool,
     killed: bool,
+    climbing: bool,
 }
 
 const RUN_FRAME_DURATION: f32 = 0.1;
@@ -150,6 +151,7 @@ impl Player {
             yvec: 0.0,
             last_jump_button: false,
             killed: false,
+            climbing: false,
         }
     }
 }
@@ -164,6 +166,35 @@ impl entity::Entity for Player {
     ) {
         if self.killed {
             return;
+        }
+
+        let on_ladder = tile_map.is_ladder(self.xpos as i32, self.ypos as i32)
+            || tile_map.is_ladder(self.xpos as i32, self.ypos as i32 + 64);
+        if self.climbing {
+            if !on_ladder {
+                self.climbing = false;
+            }
+
+            // XXX check for barriers
+            if buttons & entity::CONTROL_UP != 0 {
+                self.ypos -= 128.0 * d_t;
+            } else if buttons & entity::CONTROL_DOWN != 0 {
+                self.ypos += 128.0 * d_t;
+            }
+
+            if buttons & entity::CONTROL_LEFT != 0 {
+                self.xpos -= 64.0 * d_t;
+            } else if buttons & entity::CONTROL_RIGHT != 0 {
+                self.xpos += 64.0 * d_t;
+            }
+
+            return;
+        } else if on_ladder {
+            if buttons & entity::CONTROL_UP != 0
+                || buttons & entity::CONTROL_DOWN != 0 {
+                self.climbing = true;
+                return;
+            }
         }
 
         if buttons & entity::CONTROL_FIRE == 0 {
@@ -277,6 +308,22 @@ impl entity::Entity for Player {
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
                 &assets::SPR_PLAYER_DEAD,
+                0.0,
+                (33, 20),
+                false,
+            );
+            return;
+        }
+
+        if self.climbing {
+            let sprite = if (((self.ypos + self.xpos) as i32) % 64) > 32 {
+                &assets::SPR_PLAYER_CLIMB1
+            } else {
+                &assets::SPR_PLAYER_CLIMB2
+            };
+            context.draw_image(
+                (self.xpos as i32, self.ypos as i32),
+                sprite,
                 0.0,
                 (33, 20),
                 false,

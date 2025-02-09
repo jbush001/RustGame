@@ -19,7 +19,9 @@ use std::io::Read;
 use std::path::PathBuf;
 
 const TILE_SIZE: i32 = 64;
+
 const FLAG_SOLID: u8 = 1;
+const FLAG_LADDER: u8 = 2;
 
 pub struct TileMap {
     tiles: Vec<u8>,
@@ -88,16 +90,24 @@ impl TileMap {
     }
 
     pub fn is_solid(&self, x: i32, y: i32) -> bool {
+        (self.get_flags(x, y) & FLAG_SOLID) != 0
+    }
+
+    pub fn is_ladder(&self, x: i32, y: i32) -> bool {
+        (self.get_flags(x, y) & FLAG_LADDER) != 0
+    }
+
+    pub fn get_flags(&self, x: i32, y: i32) -> u8 {
         if x < 0 || y < 0 || x >= self.width * TILE_SIZE || y >= self.height * TILE_SIZE {
-            return true;
+            return 0;
         }
 
         let tile_num = self.tiles[((y / TILE_SIZE) * self.width + (x / TILE_SIZE)) as usize];
         if tile_num == 0 {
-            return false;
+            return 0;
         }
 
-        self.tile_flags[(tile_num - 1) as usize] & FLAG_SOLID != 0
+        self.tile_flags[(tile_num - 1) as usize]
     }
 
     pub fn draw(&mut self, context: &mut gfx::RenderContext, visible_rect: &(i32, i32, i32, i32)) {
