@@ -418,7 +418,7 @@ impl entity::Entity for Player {
     }
 
     fn get_collision_mask(&self) -> u32 {
-        !entity::COLL_PLAYER
+        entity::COLL_MISSILE
     }
 
     fn collide(&mut self, _other: &(dyn entity::Entity)) {
