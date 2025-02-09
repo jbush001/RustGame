@@ -50,7 +50,7 @@ pub trait Entity: Any {
 
     // Return axis aligned bounding box of this object (left, top, width, height)
     // If two entities bounding boxes overlap they are considered to collide.
-    fn get_bounding_box(&self) -> (f32, f32, f32, f32);
+    fn get_bounding_box(&self) -> (i32, i32, i32, i32);
     fn collide(&mut self, other: &dyn Entity);
 
     fn as_any(&self) -> &dyn Any;
@@ -80,7 +80,7 @@ pub fn do_frame(
     }
 }
 
-fn overlaps(a1: &(f32, f32, f32, f32), a2: &(f32, f32, f32, f32)) -> bool {
+fn overlaps(a1: &(i32, i32, i32, i32), a2: &(i32, i32, i32, i32)) -> bool {
     let (x1, y1, w1, h1) = *a1;
     let (x2, y2, w2, h2) = *a2;
 

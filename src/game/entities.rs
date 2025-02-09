@@ -82,13 +82,13 @@ impl entity::Entity for Arrow {
         !self.collided
     }
 
-    fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
+    fn get_bounding_box(&self) -> (i32, i32, i32, i32) {
         // We only track the tip of the arrow
         (
-            self.xpos + self.angle.cos() * 14.0,
-            self.ypos + self.angle.sin() * 14.0,
-            4.0,
-            4.0,
+            (self.xpos + self.angle.cos() * 14.0) as i32,
+            (self.ypos + self.angle.sin() * 14.0) as i32,
+            4,
+            4,
         )
     }
 
@@ -386,14 +386,14 @@ impl entity::Entity for Player {
         true
     }
 
-    fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
+    fn get_bounding_box(&self) -> (i32, i32, i32, i32) {
         if self.killed {
             // This affects how subsequent arrows that hit the corpse are
             // displayed.
-            (self.xpos - 32.0, self.ypos + 40.0, 64.0, 14.0)
+            (self.xpos as i32 - 32, self.ypos as i32 + 40, 64, 14)
         } else {
             // We only include the torso
-            (self.xpos - 5.0, self.ypos - 5.0, 10.0, 15.0)
+            (self.xpos as i32 - 5, self.ypos as i32 - 5, 10, 15)
         }
     }
 
@@ -469,8 +469,8 @@ impl entity::Entity for Balloon {
         entity::COLL_MISSILE
     }
 
-    fn get_bounding_box(&self) -> (f32, f32, f32, f32) {
-        (self.xpos - 10.0, self.ypos - 15.0, 20.0, 30.0)
+    fn get_bounding_box(&self) -> (i32, i32, i32, i32) {
+        (self.xpos as i32 - 10, self.ypos as i32 - 15, 20, 30)
     }
 
     fn collide(&mut self, _other: &dyn entity::Entity) {
