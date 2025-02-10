@@ -23,7 +23,6 @@ static mut EFFECTS: Vec<mixer::Chunk> = Vec::new();
 pub fn init_audio(audio_file_list: &[&str]) {
     mixer::open_audio(44100, mixer::AUDIO_S16LSB, mixer::DEFAULT_CHANNELS, 1024).unwrap();
     mixer::init(mixer::InitFlag::MP3).unwrap();
-
     mixer::allocate_channels(4);
 
     let exe_path = std::env::current_exe().unwrap();
@@ -39,4 +38,10 @@ pub fn init_audio(audio_file_list: &[&str]) {
 pub fn play_effect(num: usize) {
     let fx = unsafe { &EFFECTS[num] };
     sdl2::mixer::Channel::all().play(fx, 0).unwrap();
+}
+
+pub fn play_music(file_name: &str) -> sdl2::mixer::Music {
+    let music = sdl2::mixer::Music::from_file(file_name).unwrap();
+    music.play(-1).unwrap();
+    music
 }

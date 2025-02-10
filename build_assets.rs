@@ -93,7 +93,9 @@ fn main() {
     );
 
     let audio_define_path = build_dir.clone() + "/sounds.rs";
-    copy_audio_files("assets/sound-effects.txt", &audio_define_path, &target_dir);
+    copy_sound_effects("assets/sound-effects.txt", &audio_define_path, &target_dir);
+
+    copy_music_files("assets/", &target_dir);
 }
 
 // Returns a list of identifier->path mappings
@@ -371,7 +373,7 @@ fn write_map_file(
     writer.flush().unwrap();
 }
 
-fn copy_audio_files(manifest_path: &str, defines_path: &str, output_dir: &str) {
+fn copy_sound_effects(manifest_path: &str, defines_path: &str, output_dir: &str) {
     let manifest = std::fs::read_to_string(manifest_path).unwrap();
     let mut files: Vec<(String, String)> = Vec::new();
     for line in manifest.lines() {
@@ -421,4 +423,18 @@ fn copy_audio_files(manifest_path: &str, defines_path: &str, output_dir: &str) {
     }
 
     writeln!(defines_file, "];").unwrap();
+}
+
+fn copy_music_files(from_dir: &str, to_dir: &str) {
+    for name in fs::read_dir(from_dir).unwrap() {
+        let source_path = name.unwrap().path();
+        if source_path.is_file() {
+            if let Some(file_name) = source_path.file_name().and_then(|name| name.to_str()) {
+                if file_name.ends_with(".mp3") {
+                    println!("copy {:?} to {}/{:?}", source_path, to_dir, file_name);
+                    std::fs::copy(&source_path, format!("{}/{}", to_dir, file_name)).unwrap();
+                }
+            }
+        }
+    }
 }
