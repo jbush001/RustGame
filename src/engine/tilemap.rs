@@ -56,6 +56,7 @@ impl TileMap {
         let width = i32::from_le_bytes(buf);
         reader.read_exact(&mut buf).unwrap();
         let height = i32::from_le_bytes(buf);
+        println!("Loading tilemap {}x{}", width, height);
 
         reader.read_exact(&mut buf).unwrap();
         let num_tiles = i32::from_le_bytes(buf);
@@ -123,9 +124,10 @@ impl TileMap {
         let (left, top, right, bottom) = *visible_rect;
 
         let left_tile = left / TILE_SIZE;
-        let right_tile = (left + right + TILE_SIZE - 1) / TILE_SIZE;
+        let right_tile = std::cmp::min((left + right + TILE_SIZE - 1) / TILE_SIZE, self.width);
         let top_tile = top / TILE_SIZE;
-        let bottom_tile = (top + bottom + TILE_SIZE - 1) / TILE_SIZE;
+        let bottom_tile = std::cmp::min((top + bottom + TILE_SIZE - 1) / TILE_SIZE, self.height);
+
 
         for y in top_tile..bottom_tile {
             for x in left_tile..right_tile {
