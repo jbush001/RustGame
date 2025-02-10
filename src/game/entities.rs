@@ -274,6 +274,11 @@ impl entity::Entity for Player {
             }
         }
 
+        if self.yvec < 0.0 && tile_map.is_solid(self.xpos as i32, self.ypos as i32 - 20) {
+            // Bumped head while jumping
+            self.yvec = 0.0;
+        }
+
         self.last_jump_button = buttons & entity::CONTROL_JUMP != 0;
         self.ypos += self.yvec * d_t;
 
