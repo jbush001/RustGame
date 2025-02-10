@@ -111,6 +111,9 @@ impl entity::Entity for Arrow {
 
 pub struct Player {
     angle: f32,
+
+    // The origin for the player is in the center, right at the shoulder
+    // level (since the bow pivots around this point).
     pub xpos: f32,
     pub ypos: f32,
     bow_drawn: bool,
@@ -129,6 +132,7 @@ pub struct Player {
 
 const RUN_FRAME_DURATION: f32 = 0.1;
 const MAX_JUMP_COUNTER: u32 = 5;
+const PLAYER_GROUND_OFFSET: i32 = 44;
 
 impl Player {
     pub fn new(xpos: f32, ypos: f32) -> Player {
@@ -165,16 +169,19 @@ impl entity::Entity for Player {
         }
 
         let on_ladder = tile_map.is_ladder(self.xpos as i32, self.ypos as i32)
-            || tile_map.is_ladder(self.xpos as i32, self.ypos as i32 + 64);
+            || tile_map.is_ladder(self.xpos as i32, self.ypos as i32 + PLAYER_GROUND_OFFSET);
         if self.climbing {
             if !on_ladder {
                 self.climbing = false;
             }
 
-            // XXX check for barriers
-            if buttons & entity::CONTROL_UP != 0 {
+            if buttons & entity::CONTROL_UP != 0
+                && !tile_map.is_solid(self.xpos as i32, self.ypos as i32)
+            {
                 self.ypos -= 128.0 * d_t;
-            } else if buttons & entity::CONTROL_DOWN != 0 {
+            } else if buttons & entity::CONTROL_DOWN != 0
+                && !tile_map.is_solid(self.xpos as i32, self.ypos as i32 + PLAYER_GROUND_OFFSET)
+            {
                 self.ypos += 128.0 * d_t;
             }
 
@@ -231,9 +238,13 @@ impl entity::Entity for Player {
             }
         }
 
-        const GROUND_OFFSET: i32 = 44;
-        self.on_ground = tile_map.is_solid(self.xpos as i32 - 12, self.ypos as i32 + GROUND_OFFSET)
-            || tile_map.is_solid(self.xpos as i32 + 12, self.ypos as i32 + GROUND_OFFSET);
+        self.on_ground = tile_map.is_solid(
+            self.xpos as i32 - 12,
+            self.ypos as i32 + PLAYER_GROUND_OFFSET,
+        ) || tile_map.is_solid(
+            self.xpos as i32 + 12,
+            self.ypos as i32 + PLAYER_GROUND_OFFSET,
+        );
 
         if self.on_ground {
             if buttons & entity::CONTROL_JUMP != 0 && !self.last_jump_button {
@@ -243,7 +254,8 @@ impl entity::Entity for Player {
                 self.yvec = 0.0;
 
                 // Ensure it is on the ground.
-                self.ypos = (self.ypos / 64.0).floor() * 64.0 + (64.0 - GROUND_OFFSET as f32);
+                self.ypos =
+                    (self.ypos / 64.0).floor() * 64.0 + (64.0 - PLAYER_GROUND_OFFSET as f32);
             }
         } else if self.jump_counter < MAX_JUMP_COUNTER {
             // Size of jump is proportional to how long the button is held
@@ -267,14 +279,20 @@ impl entity::Entity for Player {
 
         // Movement
         if buttons & entity::CONTROL_LEFT != 0
-            && !tile_map.is_solid(self.xpos as i32 - 16, self.ypos as i32 + GROUND_OFFSET - 3)
+            && !tile_map.is_solid(
+                self.xpos as i32 - 16,
+                self.ypos as i32 + PLAYER_GROUND_OFFSET - 3,
+            )
             && !tile_map.is_solid(self.xpos as i32 - 16, self.ypos as i32 - 15)
         {
             self.xpos -= 150.0 * d_t;
             self.facing_left = true;
             self.is_running = self.on_ground;
         } else if buttons & entity::CONTROL_RIGHT != 0
-            && !tile_map.is_solid(self.xpos as i32 + 16, self.ypos as i32 + GROUND_OFFSET - 3)
+            && !tile_map.is_solid(
+                self.xpos as i32 + 16,
+                self.ypos as i32 + PLAYER_GROUND_OFFSET - 3,
+            )
             && !tile_map.is_solid(self.xpos as i32 + 16, self.ypos as i32 - 15)
         {
             self.xpos += 150.0 * d_t;

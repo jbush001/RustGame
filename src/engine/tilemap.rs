@@ -128,7 +128,6 @@ impl TileMap {
         let top_tile = top / TILE_SIZE;
         let bottom_tile = std::cmp::min((top + bottom + TILE_SIZE - 1) / TILE_SIZE, self.height);
 
-
         for y in top_tile..bottom_tile {
             for x in left_tile..right_tile {
                 let tile = self.tiles[(y * self.width + x) as usize];
