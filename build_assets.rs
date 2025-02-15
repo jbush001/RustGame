@@ -95,7 +95,7 @@ fn main() {
     let audio_define_path = build_dir.clone() + "/sounds.rs";
     copy_sound_effects("assets/sound-effects.txt", &audio_define_path, &target_dir);
 
-    copy_music_files("assets/", &target_dir);
+    copy_music_files("assets/sounds", &target_dir);
 }
 
 // Returns a list of identifier->path mappings
@@ -419,7 +419,13 @@ fn copy_sound_effects(manifest_path: &str, defines_path: &str, output_dir: &str)
     )
     .unwrap();
     for (_name, path) in files {
-        writeln!(defines_file, "\"{}\",", path).unwrap();
+        let file_name = Path::new(&path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+
+        writeln!(defines_file, "\"{}\",", file_name).unwrap();
     }
 
     writeln!(defines_file, "];").unwrap();
