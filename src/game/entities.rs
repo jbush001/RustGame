@@ -346,7 +346,7 @@ impl entity::Entity for Player {
             // Draw bow on back
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
-                &assets::SPR_BOW_ON_BACK,
+                &assets::SPR_PLAYER_BOW_ON_BACK,
                 0.0,
                 self.facing_left,
             );
@@ -380,20 +380,20 @@ impl entity::Entity for Player {
             };
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
-                &assets::SPR_BOW_DRAWN,
+                &assets::SPR_PLAYER_BOW_DRAWN,
                 angle,
                 self.facing_left,
             );
         } else {
             let arms_image = if self.is_running {
                 match self.run_frame {
-                    0 => &assets::SPR_ARMS_RUN1,
-                    1 => &assets::SPR_ARMS_RUN2,
-                    2 => &assets::SPR_ARMS_RUN3,
-                    _ => &assets::SPR_ARMS_RUN1,
+                    0 => &assets::SPR_PLAYER_ARMS_RUN1,
+                    1 => &assets::SPR_PLAYER_ARMS_RUN2,
+                    2 => &assets::SPR_PLAYER_ARMS_RUN3,
+                    _ => &assets::SPR_PLAYER_ARMS_RUN1,
                 }
             } else {
-                &assets::SPR_ARMS_IDLE
+                &assets::SPR_PLAYER_ARMS_IDLE
             };
 
             context.draw_image(
