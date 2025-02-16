@@ -25,10 +25,6 @@ pub const CONTROL_RIGHT: u32 = 0x8;
 pub const CONTROL_FIRE: u32 = 0x10;
 pub const CONTROL_JUMP: u32 = 0x20;
 
-pub const COLL_MISSILE: u32 = 1;
-pub const COLL_PLAYER: u32 = 2;
-pub const COLL_OBJ: u32 = 4;
-
 pub trait Entity: Any {
     fn update(
         &mut self,

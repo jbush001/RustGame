@@ -23,6 +23,11 @@ use std::any::Any;
 
 pub const GRAVITY: f32 = 1500.0;
 
+// Collision classes
+pub const COLL_MISSILE: u32 = 1;
+pub const COLL_PLAYER: u32 = 2;
+pub const COLL_OBJ: u32 = 4;
+
 pub struct Arrow {
     xpos: f32,
     ypos: f32,
@@ -93,11 +98,11 @@ impl entity::Entity for Arrow {
     }
 
     fn get_collision_class(&self) -> u32 {
-        entity::COLL_MISSILE
+        COLL_MISSILE
     }
 
     fn get_collision_mask(&self) -> u32 {
-        !entity::COLL_MISSILE
+        !COLL_MISSILE
     }
 
     fn collide(&mut self, _other: &dyn entity::Entity) {
@@ -421,11 +426,11 @@ impl entity::Entity for Player {
     }
 
     fn get_collision_class(&self) -> u32 {
-        entity::COLL_PLAYER
+        COLL_PLAYER
     }
 
     fn get_collision_mask(&self) -> u32 {
-        entity::COLL_MISSILE
+        COLL_MISSILE
     }
 
     fn collide(&mut self, _other: &(dyn entity::Entity)) {
@@ -485,11 +490,11 @@ impl entity::Entity for Balloon {
     }
 
     fn get_collision_class(&self) -> u32 {
-        entity::COLL_OBJ
+        COLL_OBJ
     }
 
     fn get_collision_mask(&self) -> u32 {
-        entity::COLL_MISSILE
+        COLL_MISSILE
     }
 
     fn get_bounding_box(&self) -> (i32, i32, i32, i32) {
