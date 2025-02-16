@@ -114,8 +114,8 @@ pub struct Player {
 
     // The origin for the player is in the center, right at the shoulder
     // level (since the bow pivots around this point).
-    pub xpos: f32,
-    pub ypos: f32,
+    xpos: f32,
+    ypos: f32,
     bow_drawn: bool,
     bow_draw_time: f32,
     facing_left: bool,
@@ -254,8 +254,8 @@ impl entity::Entity for Player {
                 self.yvec = 0.0;
 
                 // Ensure it is on the ground.
-                self.ypos =
-                    (self.ypos / 64.0).floor() * 64.0 + (64.0 - PLAYER_GROUND_OFFSET as f32);
+                self.ypos = (self.ypos / tilemap::TILE_SIZE_F).floor() * tilemap::TILE_SIZE_F
+                    + (tilemap::TILE_SIZE_F - PLAYER_GROUND_OFFSET as f32);
             }
         } else if self.jump_counter < MAX_JUMP_COUNTER {
             // Size of jump is proportional to how long the button is held

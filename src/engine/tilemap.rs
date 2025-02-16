@@ -18,7 +18,8 @@ use crate::gfx;
 use std::io::Read;
 use std::path::PathBuf;
 
-const TILE_SIZE: i32 = 64;
+pub const TILE_SIZE: i32 = 64;
+pub const TILE_SIZE_F: f32 = TILE_SIZE as f32;
 
 const FLAG_SOLID: u8 = 1;
 const FLAG_LADDER: u8 = 2;

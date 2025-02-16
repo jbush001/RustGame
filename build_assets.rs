@@ -419,11 +419,7 @@ fn copy_sound_effects(manifest_path: &str, defines_path: &str, output_dir: &str)
     )
     .unwrap();
     for (_name, path) in files {
-        let file_name = Path::new(&path)
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+        let file_name = Path::new(&path).file_name().unwrap().to_str().unwrap();
 
         writeln!(defines_file, "\"{}\",", file_name).unwrap();
     }
