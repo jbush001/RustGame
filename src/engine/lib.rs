@@ -50,17 +50,20 @@ impl GameEngine {
         let mut sdl = sdl2::init().unwrap();
         audio::init_audio(audio_file_list);
 
-        let exe_path = std::env::current_exe().unwrap();
-        let exe_dir = exe_path.parent().unwrap();
-        let tile_map_path = exe_dir.join("map.bin");
-
         GameEngine {
             context: gfx::RenderContext::new(&mut sdl).unwrap(),
-            tile_map: tilemap::TileMap::new(&tile_map_path),
+            tile_map: tilemap::TileMap::new(),
             event_pump: sdl.event_pump().unwrap(),
             entities: Vec::new(),
             _sdl: sdl,
         }
+    }
+
+    pub fn load_map(&mut self, file_name: &str) {
+        let exe_path = std::env::current_exe().unwrap();
+        let exe_dir = exe_path.parent().unwrap();
+        let tile_map_path = exe_dir.join(file_name);
+        self.tile_map.load(&tile_map_path);
     }
 
     pub fn run(&mut self) {
