@@ -21,7 +21,7 @@
 //
 
 use image::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -47,12 +47,20 @@ fn main() {
     println!("cargo::rerun-if-changed=build.rs");
 
     let sprite_ids = read_sprite_list("assets/sprites.txt");
-    let (map_width, map_height, encoded_map, tile_paths, tile_flags) =
-        read_tile_map("assets/tiles.txt");
+    let tile_maps = read_tile_maps("assets/tile_maps.txt");
 
-    let mut image_paths: Vec<String> = tile_paths.clone();
-    image_paths.extend(sprite_ids.iter().map(|(_, path, _, _)| path.clone()));
+    let mut image_paths: HashSet<String> = HashSet::new();
+    for tile_map in &tile_maps {
+        for path in &tile_map.4 {
+            image_paths.insert(path.clone());
+        }
+    }
 
+    for (_, path, _, _) in &sprite_ids {
+        image_paths.insert(path.clone());
+    }
+
+    println!("All images {:?}", image_paths);
     let mut images = load_images(&image_paths);
 
     // Sort images by vertical size, which will make them pack better.
@@ -82,20 +90,36 @@ fn main() {
         panic!("{}", msg);
     }
 
-    write_map_file(
-        format!("{}/{}", &target_dir, "map.bin").as_str(),
-        &encoded_map,
-        &tile_paths,
-        &image_coordinates,
-        &tile_flags,
-        map_width,
-        map_height,
-    );
+    for (source_path, map_width, map_height, encoded_map, tile_paths, tile_flags) in &tile_maps {
+        let output_file = Path::new(source_path).file_stem().unwrap().to_str().unwrap();
+
+        println!("writing map file {}", output_file);
+        write_tile_map_file(
+            format!("{}/{}.bin", &target_dir, output_file).as_str(),
+            &encoded_map,
+            &tile_paths,
+            &image_coordinates,
+            &tile_flags,
+            *map_width,
+            *map_height,
+        );
+    }
 
     let audio_define_path = build_dir.clone() + "/sounds.rs";
     copy_sound_effects("assets/sound-effects.txt", &audio_define_path, &target_dir);
 
     copy_music_files("assets/sounds", &target_dir);
+}
+
+fn read_tile_maps(list_file: &str) -> Vec<(String, usize, usize, Vec<u8>, Vec<String>, Vec<u8>)> {
+    let mut result: Vec<(String, usize, usize, Vec<u8>, Vec<String>, Vec<u8>)> = Vec::new();
+    let map_list = std::fs::read_to_string(list_file).unwrap();
+    for filename in map_list.lines() {
+        let map_info = read_tile_map(&format!("assets/{}", &filename));
+        result.push((filename.to_string(), map_info.0, map_info.1, map_info.2, map_info.3, map_info.4));
+    }
+
+    result
 }
 
 // Returns a list of identifier->path mappings
@@ -125,6 +149,8 @@ fn read_sprite_list(path: &str) -> Vec<(String, String, i32, i32)> {
 }
 
 fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
+    println!("reading tile map {}", path);
+
     let tiles = std::fs::read_to_string(path).unwrap();
     let mut char_to_tile: HashMap<char, usize> = HashMap::new();
     let mut tile_images: Vec<String> = Vec::new();
@@ -203,7 +229,7 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
 }
 
 // Given a list of paths, return corresponding images.
-fn load_images(filenames: &[String]) -> Vec<(String, DynamicImage)> {
+fn load_images(filenames: &HashSet<String>) -> Vec<(String, DynamicImage)> {
     let mut images: Vec<(String, DynamicImage)> = Vec::new();
     for filename in filenames.iter() {
         let img = ImageReader::open(format!("assets/{}", filename));
@@ -337,7 +363,7 @@ fn write_sprite_locations(
 //    map: [u8; width * height]
 //  "255 tiles should be enough for anyone"
 //
-fn write_map_file(
+fn write_tile_map_file(
     dest_path: &str,
     encoded_map: &[u8],
     tile_paths: &[String],

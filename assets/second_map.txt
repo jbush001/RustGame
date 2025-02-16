@@ -1,0 +1,10 @@
+X tiles/brick.png 1
+. tiles/water.png 0
+H tiles/ladder.png 2
+------
+X
+X
+X
+X
+X
+X...........................
