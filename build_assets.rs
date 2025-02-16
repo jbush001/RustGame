@@ -29,6 +29,15 @@ use std::path::Path;
 
 type AtlasLocation = (f32, f32, f32, f32, u32, u32);
 
+struct TileMapInfo {
+    source_path: String,
+    width: usize,
+    height: usize,
+    tile_data: Vec<u8>,
+    image_paths: Vec<String>,
+    tile_flags: Vec<u8>,
+}
+
 fn main() {
     let build_dir = env::var_os("OUT_DIR").unwrap().to_str().unwrap().to_owned();
     let target_dir = Path::new(&build_dir)
@@ -51,7 +60,7 @@ fn main() {
 
     let mut image_paths: HashSet<String> = HashSet::new();
     for tile_map in &tile_maps {
-        for path in &tile_map.4 {
+        for path in &tile_map.image_paths {
             image_paths.insert(path.clone());
         }
     }
@@ -90,19 +99,8 @@ fn main() {
         panic!("{}", msg);
     }
 
-    for (source_path, map_width, map_height, encoded_map, tile_paths, tile_flags) in &tile_maps {
-        let output_file = Path::new(source_path).file_stem().unwrap().to_str().unwrap();
-
-        println!("writing map file {}", output_file);
-        write_tile_map_file(
-            format!("{}/{}.bin", &target_dir, output_file).as_str(),
-            &encoded_map,
-            &tile_paths,
-            &image_coordinates,
-            &tile_flags,
-            *map_width,
-            *map_height,
-        );
+    for tile_map_info in &tile_maps {
+        write_tile_map_file(&target_dir, tile_map_info, &image_coordinates);
     }
 
     let audio_define_path = build_dir.clone() + "/sounds.rs";
@@ -111,12 +109,11 @@ fn main() {
     copy_music_files("assets/sounds", &target_dir);
 }
 
-fn read_tile_maps(list_file: &str) -> Vec<(String, usize, usize, Vec<u8>, Vec<String>, Vec<u8>)> {
-    let mut result: Vec<(String, usize, usize, Vec<u8>, Vec<String>, Vec<u8>)> = Vec::new();
+fn read_tile_maps(list_file: &str) -> Vec<TileMapInfo> {
+    let mut result: Vec<TileMapInfo> = Vec::new();
     let map_list = std::fs::read_to_string(list_file).unwrap();
     for filename in map_list.lines() {
-        let map_info = read_tile_map(&format!("assets/{}", &filename));
-        result.push((filename.to_string(), map_info.0, map_info.1, map_info.2, map_info.3, map_info.4));
+        result.push(read_tile_map(filename));
     }
 
     result
@@ -148,10 +145,11 @@ fn read_sprite_list(path: &str) -> Vec<(String, String, i32, i32)> {
     sprites
 }
 
-fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
-    println!("reading tile map {}", path);
+fn read_tile_map(filename: &str) -> TileMapInfo {
+    let path = format!("assets/{}", &filename);
+    println!("reading tile map {}", &path);
 
-    let tiles = std::fs::read_to_string(path).unwrap();
+    let tiles = std::fs::read_to_string(&path).unwrap();
     let mut char_to_tile: HashMap<char, usize> = HashMap::new();
     let mut tile_images: Vec<String> = Vec::new();
     let mut tile_flags: Vec<u8> = Vec::new();
@@ -225,7 +223,14 @@ fn read_tile_map(path: &str) -> (usize, usize, Vec<u8>, Vec<String>, Vec<u8>) {
         }
     }
 
-    (map_width, map_height, encoded_map, tile_images, tile_flags)
+    TileMapInfo {
+        source_path: filename.to_string(),
+        width: map_width,
+        height: map_height,
+        tile_data: encoded_map,
+        image_paths: tile_images,
+        tile_flags,
+    }
 }
 
 // Given a list of paths, return corresponding images.
@@ -249,16 +254,15 @@ struct AtlasAllocator {
 
 impl AtlasAllocator {
     fn new(width: u32, height: u32) -> AtlasAllocator {
-        let mut free_regions: Vec<(u32, u32, u32, u32)> = Vec::new();
-        free_regions.push((0, 0, width, height));
-        AtlasAllocator { free_regions }
+        AtlasAllocator {
+            free_regions: vec![(0, 0, width, height)],
+        }
     }
 
     fn alloc(&mut self, sprite_width: u32, sprite_height: u32) -> (u32, u32) {
         // First fit allocator
         for index in 0..self.free_regions.len() {
-            let (region_left, region_top, region_width, region_height) =
-                self.free_regions[index].clone();
+            let (region_left, region_top, region_width, region_height) = self.free_regions[index];
             if region_width >= sprite_width && region_height >= sprite_height {
                 self.free_regions.remove(index);
 
@@ -364,24 +368,30 @@ fn write_sprite_locations(
 //  "255 tiles should be enough for anyone"
 //
 fn write_tile_map_file(
-    dest_path: &str,
-    encoded_map: &[u8],
-    tile_paths: &[String],
+    target_dir: &str,
+    tile_map_info: &TileMapInfo,
     image_coordinates: &HashMap<String, AtlasLocation>,
-    tile_flags: &[u8],
-    width: usize,
-    height: usize,
 ) {
+    let output_file_name = Path::new(&tile_map_info.source_path)
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap();
+    let dest_path = format!("{}/{}.bin", target_dir, output_file_name);
     let output_file = fs::File::create(dest_path).unwrap();
     let mut writer = std::io::BufWriter::new(output_file);
     const MAGIC: &[u8; 4] = b"TMAP";
     writer.write_all(MAGIC.as_bytes()).unwrap();
-    writer.write_all(&(width as u32).to_le_bytes()).unwrap();
-    writer.write_all(&(height as u32).to_le_bytes()).unwrap();
     writer
-        .write_all(&(tile_paths.len() as u32).to_le_bytes())
+        .write_all(&(tile_map_info.width as u32).to_le_bytes())
         .unwrap();
-    for path in tile_paths.iter() {
+    writer
+        .write_all(&(tile_map_info.height as u32).to_le_bytes())
+        .unwrap();
+    writer
+        .write_all(&(tile_map_info.image_paths.len() as u32).to_le_bytes())
+        .unwrap();
+    for path in tile_map_info.image_paths.iter() {
         assert!(image_coordinates.contains_key(path));
         let (left, top, right, bottom, _width, _height) = image_coordinates.get(path).unwrap();
         println!(
@@ -394,8 +404,12 @@ fn write_tile_map_file(
         writer.write_all(&bottom.to_le_bytes()).unwrap();
     }
 
-    writer.write_all(tile_flags).unwrap();
-    writer.write_all(encoded_map).unwrap();
+    writer
+        .write_all(tile_map_info.tile_flags.as_slice())
+        .unwrap();
+    writer
+        .write_all(tile_map_info.tile_data.as_slice())
+        .unwrap();
     writer.flush().unwrap();
 }
 

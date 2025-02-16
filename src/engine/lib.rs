@@ -95,19 +95,19 @@ impl GameEngine {
             }
 
             let player_rect = self.entities[0].get_bounding_box();
-            let right = (player_rect.0 + player_rect.2) as i32;
-            let bottom = (player_rect.1 + player_rect.3) as i32;
+            let right = player_rect.0 + player_rect.2;
+            let bottom = player_rect.1 + player_rect.3;
 
             if right > x_scroll + RIGHT_SCROLL_BOUNDARY {
                 x_scroll = right - RIGHT_SCROLL_BOUNDARY;
-            } else if (player_rect.0 as i32) < x_scroll + LEFT_SCROLL_BOUNDARY {
-                x_scroll = std::cmp::max(0, (player_rect.0 as i32) - LEFT_SCROLL_BOUNDARY);
+            } else if player_rect.0 < x_scroll + LEFT_SCROLL_BOUNDARY {
+                x_scroll = std::cmp::max(0, player_rect.0 - LEFT_SCROLL_BOUNDARY);
             }
 
             if bottom > y_scroll + BOTTOM_SCROLL_BOUNDARY {
                 y_scroll = bottom - BOTTOM_SCROLL_BOUNDARY;
-            } else if (player_rect.1 as i32) < y_scroll + TOP_SCROLL_BOUNDARY {
-                y_scroll = std::cmp::max(0, (player_rect.1 as i32) - TOP_SCROLL_BOUNDARY);
+            } else if player_rect.1 < y_scroll + TOP_SCROLL_BOUNDARY {
+                y_scroll = std::cmp::max(0, player_rect.1 - TOP_SCROLL_BOUNDARY);
             }
 
             self.context.set_offset(x_scroll, y_scroll);
