@@ -133,11 +133,11 @@ pub struct Player {
     last_jump_button: bool,
     killed: bool,
     climbing: bool,
+    ground_offset: i32, // Distance from origin to ground
 }
 
 const RUN_FRAME_DURATION: f32 = 0.1;
 const MAX_JUMP_COUNTER: u32 = 5;
-const PLAYER_GROUND_OFFSET: i32 = 44;
 
 impl Player {
     pub fn new(xpos: f32, ypos: f32) -> Player {
@@ -157,6 +157,7 @@ impl Player {
             last_jump_button: false,
             killed: false,
             climbing: false,
+            ground_offset: assets::SPR_PLAYER_BODY_IDLE.5 as i32 - assets::SPR_PLAYER_BODY_IDLE.7
         }
     }
 }
@@ -174,7 +175,7 @@ impl entity::Entity for Player {
         }
 
         let on_ladder = tile_map.is_ladder(self.xpos as i32, self.ypos as i32)
-            || tile_map.is_ladder(self.xpos as i32, self.ypos as i32 + PLAYER_GROUND_OFFSET);
+            || tile_map.is_ladder(self.xpos as i32, self.ypos as i32 + self.ground_offset);
         if self.climbing {
             if !on_ladder {
                 self.climbing = false;
@@ -185,7 +186,7 @@ impl entity::Entity for Player {
             {
                 self.ypos -= 128.0 * d_t;
             } else if buttons & entity::CONTROL_DOWN != 0
-                && !tile_map.is_solid(self.xpos as i32, self.ypos as i32 + PLAYER_GROUND_OFFSET)
+                && !tile_map.is_solid(self.xpos as i32, self.ypos as i32 + self.ground_offset)
             {
                 self.ypos += 128.0 * d_t;
             }
@@ -246,10 +247,10 @@ impl entity::Entity for Player {
 
         self.on_ground = tile_map.is_solid(
             self.xpos as i32 - 12,
-            self.ypos as i32 + PLAYER_GROUND_OFFSET,
+            self.ypos as i32 + self.ground_offset,
         ) || tile_map.is_solid(
             self.xpos as i32 + 12,
-            self.ypos as i32 + PLAYER_GROUND_OFFSET,
+            self.ypos as i32 + self.ground_offset,
         );
 
         if self.on_ground {
@@ -261,7 +262,7 @@ impl entity::Entity for Player {
 
                 // Ensure it is on the ground.
                 self.ypos = (self.ypos / tilemap::TILE_SIZE_F).floor() * tilemap::TILE_SIZE_F
-                    + (tilemap::TILE_SIZE_F - PLAYER_GROUND_OFFSET as f32);
+                    + (tilemap::TILE_SIZE_F - self.ground_offset as f32);
             }
         } else if self.jump_counter < MAX_JUMP_COUNTER {
             // Size of jump is proportional to how long the button is held
@@ -292,7 +293,7 @@ impl entity::Entity for Player {
         if buttons & entity::CONTROL_LEFT != 0
             && !tile_map.is_solid(
                 self.xpos as i32 - 16,
-                self.ypos as i32 + PLAYER_GROUND_OFFSET - 3,
+                self.ypos as i32 + self.ground_offset - 3,
             )
             && !tile_map.is_solid(self.xpos as i32 - 16, self.ypos as i32 - 15)
         {
@@ -302,7 +303,7 @@ impl entity::Entity for Player {
         } else if buttons & entity::CONTROL_RIGHT != 0
             && !tile_map.is_solid(
                 self.xpos as i32 + 16,
-                self.ypos as i32 + PLAYER_GROUND_OFFSET - 3,
+                self.ypos as i32 + self.ground_offset - 3,
             )
             && !tile_map.is_solid(self.xpos as i32 + 16, self.ypos as i32 - 15)
         {
