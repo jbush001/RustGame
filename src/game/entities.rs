@@ -15,6 +15,7 @@
 //
 
 use crate::assets;
+use crate::util;
 use engine::audio;
 use engine::entity;
 use engine::gfx;
@@ -87,9 +88,9 @@ impl entity::Entity for Arrow {
         !self.collided
     }
 
-    fn get_bounding_box(&self) -> (i32, i32, i32, i32) {
+    fn get_bounding_box(&self) -> util::Rect<i32> {
         // We only track the tip of the arrow
-        (
+        util::Rect::<i32>::new(
             (self.xpos + self.angle.cos() * 14.0) as i32,
             (self.ypos + self.angle.sin() * 14.0) as i32,
             4,
@@ -157,7 +158,7 @@ impl Player {
             last_jump_button: false,
             killed: false,
             climbing: false,
-            ground_offset: assets::SPR_PLAYER_BODY_IDLE.5 as i32 - assets::SPR_PLAYER_BODY_IDLE.7
+            ground_offset: assets::SPR_PLAYER_BODY_IDLE.5 as i32 - assets::SPR_PLAYER_BODY_IDLE.7,
         }
     }
 }
@@ -245,13 +246,9 @@ impl entity::Entity for Player {
             }
         }
 
-        self.on_ground = tile_map.is_solid(
-            self.xpos as i32 - 12,
-            self.ypos as i32 + self.ground_offset,
-        ) || tile_map.is_solid(
-            self.xpos as i32 + 12,
-            self.ypos as i32 + self.ground_offset,
-        );
+        self.on_ground = tile_map
+            .is_solid(self.xpos as i32 - 12, self.ypos as i32 + self.ground_offset)
+            || tile_map.is_solid(self.xpos as i32 + 12, self.ypos as i32 + self.ground_offset);
 
         if self.on_ground {
             if buttons & entity::CONTROL_JUMP != 0 && !self.last_jump_button {
@@ -416,14 +413,14 @@ impl entity::Entity for Player {
         true
     }
 
-    fn get_bounding_box(&self) -> (i32, i32, i32, i32) {
+    fn get_bounding_box(&self) -> util::Rect<i32> {
         if self.killed {
             // This affects how subsequent arrows that hit the corpse are
             // displayed.
-            (self.xpos as i32 - 32, self.ypos as i32 + 40, 64, 14)
+            util::Rect::<i32>::new(self.xpos as i32 - 32, self.ypos as i32 + 40, 64, 14)
         } else {
             // We only include the torso
-            (self.xpos as i32 - 5, self.ypos as i32 - 5, 10, 15)
+            util::Rect::<i32>::new(self.xpos as i32 - 5, self.ypos as i32 - 5, 10, 15)
         }
     }
 
@@ -499,8 +496,8 @@ impl entity::Entity for Balloon {
         COLL_MISSILE
     }
 
-    fn get_bounding_box(&self) -> (i32, i32, i32, i32) {
-        (self.xpos as i32 - 10, self.ypos as i32 - 15, 20, 30)
+    fn get_bounding_box(&self) -> util::Rect<i32> {
+        util::Rect::<i32>::new(self.xpos as i32 - 10, self.ypos as i32 - 15, 20, 30)
     }
 
     fn collide(&mut self, _other: &dyn entity::Entity) {

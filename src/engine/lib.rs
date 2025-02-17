@@ -18,6 +18,7 @@ pub mod audio;
 pub mod entity;
 pub mod gfx;
 pub mod tilemap;
+pub mod util;
 extern crate sdl2;
 
 const LEFT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH / 3;
@@ -101,24 +102,28 @@ impl GameEngine {
             }
 
             let player_rect = self.entities[0].get_bounding_box();
-            let right = player_rect.0 + player_rect.2;
-            let bottom = player_rect.1 + player_rect.3;
-
-            if right > x_scroll + RIGHT_SCROLL_BOUNDARY {
-                x_scroll = std::cmp::min(right - RIGHT_SCROLL_BOUNDARY, self.max_x_scroll);
-            } else if player_rect.0 < x_scroll + LEFT_SCROLL_BOUNDARY {
-                x_scroll = std::cmp::max(0, player_rect.0 - LEFT_SCROLL_BOUNDARY);
+            if player_rect.right() > x_scroll + RIGHT_SCROLL_BOUNDARY {
+                x_scroll = std::cmp::min(
+                    player_rect.right() - RIGHT_SCROLL_BOUNDARY,
+                    self.max_x_scroll,
+                );
+            } else if player_rect.left < x_scroll + LEFT_SCROLL_BOUNDARY {
+                x_scroll = std::cmp::max(0, player_rect.left - LEFT_SCROLL_BOUNDARY);
             }
 
-            if bottom > y_scroll + BOTTOM_SCROLL_BOUNDARY {
-                y_scroll = std::cmp::min(bottom - BOTTOM_SCROLL_BOUNDARY, self.max_y_scroll);
-            } else if player_rect.1 < y_scroll + TOP_SCROLL_BOUNDARY {
-                y_scroll = std::cmp::max(0, player_rect.1 - TOP_SCROLL_BOUNDARY);
+            if player_rect.bottom() > y_scroll + BOTTOM_SCROLL_BOUNDARY {
+                y_scroll = std::cmp::min(
+                    player_rect.bottom() - BOTTOM_SCROLL_BOUNDARY,
+                    self.max_y_scroll,
+                );
+            } else if player_rect.top < y_scroll + TOP_SCROLL_BOUNDARY {
+                y_scroll = std::cmp::max(0, player_rect.top - TOP_SCROLL_BOUNDARY);
             }
 
             self.render_context.set_offset(x_scroll, y_scroll);
 
-            let visible_rect = (x_scroll, y_scroll, gfx::WINDOW_WIDTH, gfx::WINDOW_HEIGHT);
+            let visible_rect =
+                util::Rect::<i32>::new(x_scroll, y_scroll, gfx::WINDOW_WIDTH, gfx::WINDOW_HEIGHT);
 
             self.tile_map.draw(&mut self.render_context, &visible_rect);
             entity::do_frame(
@@ -127,7 +132,6 @@ impl GameEngine {
                 &mut self.render_context,
                 buttons,
                 &self.tile_map,
-                &visible_rect,
             );
 
             self.render_context.render();

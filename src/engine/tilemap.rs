@@ -15,6 +15,7 @@
 //
 
 use crate::gfx;
+use crate::util;
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -123,13 +124,17 @@ impl TileMap {
         self.tile_flags[(tile_num - 1) as usize]
     }
 
-    pub fn draw(&mut self, context: &mut gfx::RenderContext, visible_rect: &(i32, i32, i32, i32)) {
-        let (left, top, right, bottom) = *visible_rect;
-
-        let left_tile = left / TILE_SIZE;
-        let right_tile = std::cmp::min((left + right + TILE_SIZE - 1) / TILE_SIZE, self.width);
-        let top_tile = top / TILE_SIZE;
-        let bottom_tile = std::cmp::min((top + bottom + TILE_SIZE - 1) / TILE_SIZE, self.height);
+    pub fn draw(&mut self, context: &mut gfx::RenderContext, visible_rect: &util::Rect<i32>) {
+        let left_tile = visible_rect.left / TILE_SIZE;
+        let right_tile = std::cmp::min(
+            (visible_rect.right() + TILE_SIZE - 1) / TILE_SIZE,
+            self.width,
+        );
+        let top_tile = visible_rect.top / TILE_SIZE;
+        let bottom_tile = std::cmp::min(
+            (visible_rect.bottom() + TILE_SIZE - 1) / TILE_SIZE,
+            self.height,
+        );
 
         for y in top_tile..bottom_tile {
             for x in left_tile..right_tile {

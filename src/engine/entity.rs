@@ -16,6 +16,7 @@
 
 use crate::gfx;
 use crate::tilemap;
+use crate::util;
 use std::any::Any;
 
 pub const CONTROL_UP: u32 = 0x1;
@@ -46,7 +47,7 @@ pub trait Entity: Any {
 
     // Return axis aligned bounding box of this object (left, top, width, height)
     // If two entities bounding boxes overlap they are considered to collide.
-    fn get_bounding_box(&self) -> (i32, i32, i32, i32);
+    fn get_bounding_box(&self) -> util::Rect<i32>;
     fn collide(&mut self, other: &dyn Entity);
 
     fn as_any(&self) -> &dyn Any;
@@ -58,7 +59,6 @@ pub fn do_frame(
     context: &mut gfx::RenderContext,
     buttons: u32,
     tilemap: &tilemap::TileMap,
-    _visible_rect: &(i32, i32, i32, i32),
 ) {
     handle_collisions(entities);
     let mut new_entities: Vec<Box<dyn Entity>> = Vec::new();
@@ -76,13 +76,6 @@ pub fn do_frame(
     }
 }
 
-fn overlaps(a1: &(i32, i32, i32, i32), a2: &(i32, i32, i32, i32)) -> bool {
-    let (x1, y1, w1, h1) = *a1;
-    let (x2, y2, w2, h2) = *a2;
-
-    x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2
-}
-
 // Check for objects overlapping and call their collision handlers
 // This is a brute force O(n^2) algorithm. While a broad phase step
 // would reduce the computational complexity, for fairly small
@@ -91,10 +84,10 @@ fn handle_collisions(entities: &mut Vec<Box<dyn Entity>>) {
     for i in 0..entities.len() - 1 {
         let (arr1, arr2) = entities.split_at_mut(i + 1);
         let e1 = &mut arr1[i];
-        let b1 = e1.get_bounding_box();
+        let box1 = e1.get_bounding_box();
         for e2 in arr2.iter_mut() {
-            let b2 = e2.get_bounding_box();
-            if overlaps(&b1, &b2) {
+            let box2 = e2.get_bounding_box();
+            if box1.overlaps(&box2) {
                 if (e1.get_collision_mask() & e2.get_collision_class()) != 0 {
                     e1.collide(e2.as_ref());
                 }
