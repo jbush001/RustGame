@@ -20,14 +20,14 @@ pub mod gfx;
 pub mod tilemap;
 extern crate sdl2;
 
-const LEFT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 / 3;
-const RIGHT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH as i32 * 2 / 3;
-const TOP_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 / 3;
-const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT as i32 * 2 / 3;
+const LEFT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH / 3;
+const RIGHT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH * 2 / 3;
+const TOP_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT / 3;
+const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT * 2 / 3;
 
 pub struct GameEngine {
     _sdl: sdl2::Sdl,
-    context: gfx::RenderContext,
+    render_context: gfx::RenderContext,
     tile_map: tilemap::TileMap,
     event_pump: sdl2::EventPump,
     entities: Vec<Box<dyn entity::Entity>>,
@@ -53,7 +53,7 @@ impl GameEngine {
         audio::init_audio(audio_file_list);
 
         GameEngine {
-            context: gfx::RenderContext::new(&mut sdl).unwrap(),
+            render_context: gfx::RenderContext::new(&mut sdl).unwrap(),
             tile_map: tilemap::TileMap::default(),
             event_pump: sdl.event_pump().unwrap(),
             entities: Vec::new(),
@@ -63,13 +63,13 @@ impl GameEngine {
         }
     }
 
-    pub fn load_map(&mut self, file_name: &str) {
+    pub fn load_tile_map(&mut self, file_name: &str) {
         let exe_path = std::env::current_exe().unwrap();
         let exe_dir = exe_path.parent().unwrap();
         let tile_map_path = exe_dir.join(file_name);
         self.tile_map = tilemap::TileMap::new(&tile_map_path);
-        self.max_x_scroll = self.tile_map.width * tilemap::TILE_SIZE - gfx::WINDOW_WIDTH as i32;
-        self.max_y_scroll = self.tile_map.height * tilemap::TILE_SIZE - gfx::WINDOW_HEIGHT as i32;
+        self.max_x_scroll = self.tile_map.width * tilemap::TILE_SIZE - gfx::WINDOW_WIDTH;
+        self.max_y_scroll = self.tile_map.height * tilemap::TILE_SIZE - gfx::WINDOW_HEIGHT;
     }
 
     pub fn run(&mut self) {
@@ -116,26 +116,21 @@ impl GameEngine {
                 y_scroll = std::cmp::max(0, player_rect.1 - TOP_SCROLL_BOUNDARY);
             }
 
-            self.context.set_offset(x_scroll, y_scroll);
+            self.render_context.set_offset(x_scroll, y_scroll);
 
-            let visible_rect = (
-                x_scroll,
-                y_scroll,
-                gfx::WINDOW_WIDTH as i32,
-                gfx::WINDOW_HEIGHT as i32,
-            );
+            let visible_rect = (x_scroll, y_scroll, gfx::WINDOW_WIDTH, gfx::WINDOW_HEIGHT);
 
-            self.tile_map.draw(&mut self.context, &visible_rect);
+            self.tile_map.draw(&mut self.render_context, &visible_rect);
             entity::do_frame(
                 &mut self.entities,
                 1.0 / 60.0,
-                &mut self.context,
+                &mut self.render_context,
                 buttons,
                 &self.tile_map,
                 &visible_rect,
             );
 
-            self.context.render();
+            self.render_context.render();
         }
     }
 

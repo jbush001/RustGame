@@ -24,6 +24,7 @@ pub const TILE_SIZE_F: f32 = TILE_SIZE as f32;
 const FLAG_SOLID: u8 = 1;
 const FLAG_LADDER: u8 = 2;
 
+#[derive(Default)]
 pub struct TileMap {
     pub width: i32,
     pub height: i32,
@@ -33,16 +34,6 @@ pub struct TileMap {
 }
 
 impl TileMap {
-    pub fn default() -> TileMap {
-        TileMap {
-            tiles: Vec::new(),
-            tile_flags: Vec::new(),
-            atlas_coords: Vec::new(),
-            width: 0,
-            height: 0,
-        }
-    }
-
     pub fn new(path: &PathBuf) -> TileMap {
         // Format
         //    magic [u8; 4]  "TMAP"

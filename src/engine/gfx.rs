@@ -17,8 +17,8 @@
 use gl::types::{GLint, GLsizeiptr, GLuint};
 use image::ImageReader;
 
-pub const WINDOW_WIDTH: u32 = 800;
-pub const WINDOW_HEIGHT: u32 = 450;
+pub const WINDOW_WIDTH: i32 = 800;
+pub const WINDOW_HEIGHT: i32 = 450;
 
 pub struct RenderContext {
     window: sdl2::video::Window,
@@ -96,19 +96,27 @@ fn init_texture_atlas() -> GLuint {
         gl::TexImage2D(
             gl::TEXTURE_2D,
             0,
-            gl::RGBA as i32,
-            atlas_width as i32,
-            atlas_height as i32,
+            gl::RGBA as GLint,
+            atlas_width as GLint,
+            atlas_height as GLint,
             0,
             gl::RGBA,
             gl::UNSIGNED_BYTE,
             raster_data.as_ptr() as *const _,
         );
 
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as GLint);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as GLint);
+        gl::TexParameteri(
+            gl::TEXTURE_2D,
+            gl::TEXTURE_WRAP_S,
+            gl::CLAMP_TO_EDGE as GLint,
+        );
+        gl::TexParameteri(
+            gl::TEXTURE_2D,
+            gl::TEXTURE_WRAP_T,
+            gl::CLAMP_TO_EDGE as GLint,
+        );
         check_gl_error();
 
         atlas_texture_id
@@ -133,7 +141,7 @@ impl RenderContext {
     pub fn new(sdl: &mut sdl2::Sdl) -> Result<Self, String> {
         let video_subsystem = sdl.video().unwrap();
         let window = video_subsystem
-            .window("Game", WINDOW_WIDTH, WINDOW_HEIGHT)
+            .window("Game", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
             .opengl()
             .build()
             .unwrap();
@@ -327,7 +335,7 @@ impl RenderContext {
             gl::DrawArrays(
                 gl::TRIANGLES,
                 0,
-                (self.vertices.len() / ATTR_ELEMS_PER_VERTEX) as i32,
+                (self.vertices.len() / ATTR_ELEMS_PER_VERTEX) as GLint,
             );
             check_gl_error();
         }
