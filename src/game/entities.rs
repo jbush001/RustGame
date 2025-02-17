@@ -191,9 +191,9 @@ impl entity::Entity for Player {
             }
 
             if buttons & entity::CONTROL_LEFT != 0 {
-                self.xpos -= 64.0 * d_t;
+                self.xpos -= 128.0 * d_t;
             } else if buttons & entity::CONTROL_RIGHT != 0 {
-                self.xpos += 64.0 * d_t;
+                self.xpos += 128.0 * d_t;
             }
 
             return;
@@ -201,6 +201,7 @@ impl entity::Entity for Player {
             && (buttons & entity::CONTROL_UP != 0 || buttons & entity::CONTROL_DOWN != 0)
         {
             self.climbing = true;
+            self.bow_drawn = false;
             return;
         }
 
