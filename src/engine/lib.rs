@@ -52,7 +52,7 @@ impl GameEngine {
 
         GameEngine {
             context: gfx::RenderContext::new(&mut sdl).unwrap(),
-            tile_map: tilemap::TileMap::new(),
+            tile_map: tilemap::TileMap::default(),
             event_pump: sdl.event_pump().unwrap(),
             entities: Vec::new(),
             _sdl: sdl,
@@ -63,7 +63,7 @@ impl GameEngine {
         let exe_path = std::env::current_exe().unwrap();
         let exe_dir = exe_path.parent().unwrap();
         let tile_map_path = exe_dir.join(file_name);
-        self.tile_map.load(&tile_map_path);
+        self.tile_map = tilemap::TileMap::new(&tile_map_path);
     }
 
     pub fn run(&mut self) {

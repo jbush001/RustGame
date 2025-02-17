@@ -33,14 +33,7 @@ pub struct TileMap {
 }
 
 impl TileMap {
-    // Format
-    //    magic [u8; 4]  "TMAP"
-    //    width: u32
-    //    height: u32
-    //    num_tiles: u32
-    //    tile_locs: [(f32, f32, f32, f32), num_tiles]
-    //    map: [u8; width * height]
-    pub fn new() -> TileMap {
+    pub fn default() -> TileMap {
         TileMap {
             tiles: Vec::new(),
             tile_flags: Vec::new(),
@@ -50,7 +43,15 @@ impl TileMap {
         }
     }
 
-    pub fn load(&mut self, path: &PathBuf) {
+    pub fn new(path: &PathBuf) -> TileMap {
+        // Format
+        //    magic [u8; 4]  "TMAP"
+        //    width: u32
+        //    height: u32
+        //    num_tiles: u32
+        //    tile_locs: [(f32, f32, f32, f32), num_tiles]
+        //    map: [u8; width * height]
+
         let file = std::fs::File::open(path).unwrap();
         let mut reader = std::io::BufReader::new(file);
 
@@ -64,13 +65,14 @@ impl TileMap {
         // Read width and height
         let mut buf = [0u8; 4];
         reader.read_exact(&mut buf).unwrap();
-        self.width = i32::from_le_bytes(buf);
+        let width = i32::from_le_bytes(buf);
         reader.read_exact(&mut buf).unwrap();
-        self.height = i32::from_le_bytes(buf);
+        let height = i32::from_le_bytes(buf);
+        println!("Loading tilemap {}x{}", width, height);
 
         reader.read_exact(&mut buf).unwrap();
         let num_tiles = i32::from_le_bytes(buf);
-        self.atlas_coords.clear();
+        let mut atlas_coords = Vec::new();
         for _ in 0..num_tiles {
             reader.read_exact(&mut buf).unwrap();
             let left = f32::from_le_bytes(buf);
@@ -81,7 +83,7 @@ impl TileMap {
             reader.read_exact(&mut buf).unwrap();
             let bottom = f32::from_le_bytes(buf);
 
-            self.atlas_coords.push((
+            atlas_coords.push((
                 left,
                 top,
                 right,
@@ -93,12 +95,20 @@ impl TileMap {
             ));
         }
 
-        self.tile_flags = vec![0; num_tiles as usize];
-        reader.read_exact(&mut self.tile_flags).unwrap();
+        let mut tile_flags = vec![0; num_tiles as usize];
+        reader.read_exact(&mut tile_flags).unwrap();
 
         // Read tile data
-        self.tiles = vec![0; (self.width * self.height) as usize];
-        reader.read_exact(&mut self.tiles).unwrap();
+        let mut tiles = vec![0; (width * height) as usize];
+        reader.read_exact(&mut tiles).unwrap();
+
+        TileMap {
+            tiles,
+            tile_flags,
+            atlas_coords,
+            width,
+            height,
+        }
     }
 
     pub fn is_solid(&self, x: i32, y: i32) -> bool {
