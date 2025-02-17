@@ -31,6 +31,8 @@ pub struct GameEngine {
     tile_map: tilemap::TileMap,
     event_pump: sdl2::EventPump,
     entities: Vec<Box<dyn entity::Entity>>,
+    max_x_scroll: i32,
+    max_y_scroll: i32,
 }
 
 fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
@@ -56,6 +58,8 @@ impl GameEngine {
             event_pump: sdl.event_pump().unwrap(),
             entities: Vec::new(),
             _sdl: sdl,
+            max_x_scroll: 0,
+            max_y_scroll: 0,
         }
     }
 
@@ -64,6 +68,8 @@ impl GameEngine {
         let exe_dir = exe_path.parent().unwrap();
         let tile_map_path = exe_dir.join(file_name);
         self.tile_map = tilemap::TileMap::new(&tile_map_path);
+        self.max_x_scroll = self.tile_map.width * tilemap::TILE_SIZE - gfx::WINDOW_WIDTH as i32;
+        self.max_y_scroll = self.tile_map.height * tilemap::TILE_SIZE - gfx::WINDOW_HEIGHT as i32;
     }
 
     pub fn run(&mut self) {
@@ -99,13 +105,13 @@ impl GameEngine {
             let bottom = player_rect.1 + player_rect.3;
 
             if right > x_scroll + RIGHT_SCROLL_BOUNDARY {
-                x_scroll = right - RIGHT_SCROLL_BOUNDARY;
+                x_scroll = std::cmp::min(right - RIGHT_SCROLL_BOUNDARY, self.max_x_scroll);
             } else if player_rect.0 < x_scroll + LEFT_SCROLL_BOUNDARY {
                 x_scroll = std::cmp::max(0, player_rect.0 - LEFT_SCROLL_BOUNDARY);
             }
 
             if bottom > y_scroll + BOTTOM_SCROLL_BOUNDARY {
-                y_scroll = bottom - BOTTOM_SCROLL_BOUNDARY;
+                y_scroll = std::cmp::min(bottom - BOTTOM_SCROLL_BOUNDARY, self.max_y_scroll);
             } else if player_rect.1 < y_scroll + TOP_SCROLL_BOUNDARY {
                 y_scroll = std::cmp::max(0, player_rect.1 - TOP_SCROLL_BOUNDARY);
             }

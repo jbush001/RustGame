@@ -25,11 +25,11 @@ const FLAG_SOLID: u8 = 1;
 const FLAG_LADDER: u8 = 2;
 
 pub struct TileMap {
+    pub width: i32,
+    pub height: i32,
     tiles: Vec<u8>,
     tile_flags: Vec<u8>,
     atlas_coords: Vec<(f32, f32, f32, f32, u32, u32, i32, i32)>,
-    width: i32,
-    height: i32,
 }
 
 impl TileMap {
