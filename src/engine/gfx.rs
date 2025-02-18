@@ -52,11 +52,9 @@ void main() {
 "#;
 
 fn check_gl_error() {
-    unsafe {
-        let err = gl::GetError();
-        if err != 0 {
-            panic!("Error: {}", err);
-        }
+    let err = unsafe { gl::GetError() };
+    if err != 0 {
+        panic!("Error: {}", err);
     }
 }
 
@@ -138,7 +136,7 @@ fn rotate(point: &(f32, f32), matrix: &(f32, f32, f32, f32)) -> (f32, f32) {
 }
 
 impl RenderContext {
-    pub fn new(sdl: &mut sdl2::Sdl) -> Result<Self, String> {
+    pub fn new(sdl: &sdl2::Sdl) -> Result<Self, String> {
         let video_subsystem = sdl.video().unwrap();
         let window = video_subsystem
             .window("Game", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)

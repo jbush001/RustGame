@@ -75,7 +75,7 @@ impl entity::Entity for Arrow {
         self.wobble += d_t * 10.0;
     }
 
-    fn draw(&mut self, context: &mut gfx::RenderContext) {
+    fn draw(&self, context: &mut gfx::RenderContext) {
         context.draw_image(
             (self.xpos as i32, self.ypos as i32),
             &assets::SPR_ARROW,
@@ -325,7 +325,7 @@ impl entity::Entity for Player {
         }
     }
 
-    fn draw(&mut self, context: &mut gfx::RenderContext) {
+    fn draw(&self, context: &mut gfx::RenderContext) {
         if self.killed {
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
@@ -475,7 +475,7 @@ impl entity::Entity for Balloon {
         self.ypos += self.buoyancy.sin() * 0.5;
     }
 
-    fn draw(&mut self, context: &mut gfx::RenderContext) {
+    fn draw(&self, context: &mut gfx::RenderContext) {
         context.draw_image(
             (self.xpos as i32, self.ypos as i32),
             &assets::SPR_BALLOON,

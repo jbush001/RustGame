@@ -22,13 +22,7 @@ pub struct Rect<T> {
     pub height: T,
 }
 
-impl<
-        T: std::ops::Add<Output = T>
-            + std::cmp::PartialOrd<<T as std::ops::Add>::Output>
-            + Clone
-            + Copy,
-    > Rect<T>
-{
+impl<T: std::ops::Add<Output = T> + std::cmp::PartialOrd<T> + Clone + Copy> Rect<T> {
     pub fn new(left: T, top: T, width: T, height: T) -> Rect<T> {
         Rect {
             left,

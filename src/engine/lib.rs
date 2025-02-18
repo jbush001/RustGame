@@ -50,11 +50,11 @@ fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
 
 impl GameEngine {
     pub fn new(audio_file_list: &[&str]) -> GameEngine {
-        let mut sdl = sdl2::init().unwrap();
+        let sdl = sdl2::init().unwrap();
         audio::init_audio(audio_file_list);
 
         GameEngine {
-            render_context: gfx::RenderContext::new(&mut sdl).unwrap(),
+            render_context: gfx::RenderContext::new(&sdl).unwrap(),
             tile_map: tilemap::TileMap::default(),
             event_pump: sdl.event_pump().unwrap(),
             entities: Vec::new(),

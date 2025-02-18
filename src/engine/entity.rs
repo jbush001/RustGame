@@ -34,7 +34,7 @@ pub trait Entity: Any {
         buttons: u32,
         tile_map: &tilemap::TileMap,
     );
-    fn draw(&mut self, context: &mut gfx::RenderContext);
+    fn draw(&self, context: &mut gfx::RenderContext);
     fn is_live(&self) -> bool;
 
     // Each bit in this represents a type of entity, which is used
@@ -71,7 +71,7 @@ pub fn do_frame(
     // XXX despawn things that are too far outsize visible rect
     entities.retain(|entity| entity.is_live());
 
-    for entity in entities.iter_mut() {
+    for entity in entities.iter() {
         entity.draw(context);
     }
 }

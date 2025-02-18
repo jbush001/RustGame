@@ -124,7 +124,7 @@ impl TileMap {
         self.tile_flags[(tile_num - 1) as usize]
     }
 
-    pub fn draw(&mut self, context: &mut gfx::RenderContext, visible_rect: &util::Rect<i32>) {
+    pub fn draw(&self, context: &mut gfx::RenderContext, visible_rect: &util::Rect<i32>) {
         let left_tile = visible_rect.left / TILE_SIZE;
         let right_tile = std::cmp::min(
             (visible_rect.right() + TILE_SIZE - 1) / TILE_SIZE,
