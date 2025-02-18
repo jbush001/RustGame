@@ -59,23 +59,49 @@ mod tests {
 
     use super::*;
 
+    // +--------+--------+--------+
+    // |   r1   |   r2   |   r3   |
+    // +--------+--------+--------+
+    // |   r4   |        |   r6   |
+    // +--------+--------+--------+
+    // |   r7   |   r8   |   r9   |
+    // +--------+--------+--------+
     #[test]
     fn test_overlap() {
-        let r1 = Rect::<i32>::new(10, 10, 10, 10);
-        let r2 = Rect::<i32>::new(21, 10, 10, 10);
-        assert!(!r1.overlaps(&r2));
-        assert!(!r2.overlaps(&r1));
+        let r1 = Rect::<i32>::new(0, 0, 10, 10);
+        let r2 = Rect::<i32>::new(10, 0, 10, 10);
+        let r3 = Rect::<i32>::new(20, 0, 10, 10);
+        let r4 = Rect::<i32>::new(0, 10, 10, 10);
+        let r6 = Rect::<i32>::new(20, 10, 10, 10);
+        let r7 = Rect::<i32>::new(0, 20, 10, 10);
+        let r8 = Rect::<i32>::new(10, 20, 10, 10);
+        let r9 = Rect::<i32>::new(20, 20, 10, 10);
 
-        let r3 = Rect::<i32>::new(19, 10, 10, 10);
-        assert!(r1.overlaps(&r3));
-        assert!(r3.overlaps(&r1));
+        let middle_large = Rect::<i32>::new(9, 9, 12, 12);
+        assert!(r1.overlaps(&middle_large));
+        assert!(r2.overlaps(&middle_large));
+        assert!(r3.overlaps(&middle_large));
+        assert!(r4.overlaps(&middle_large));
+        assert!(r6.overlaps(&middle_large));
+        assert!(r7.overlaps(&middle_large));
+        assert!(r8.overlaps(&middle_large));
+        assert!(r9.overlaps(&middle_large));
 
-        let r4 = Rect::<i32>::new(10, 21, 10, 10);
-        assert!(!r1.overlaps(&r4));
-        assert!(!r4.overlaps(&r1));
+        let middle_small = Rect::<i32>::new(11, 11, 8, 8);
+        assert!(!r1.overlaps(&middle_small));
+        assert!(!r2.overlaps(&middle_small));
+        assert!(!r3.overlaps(&middle_small));
+        assert!(!r4.overlaps(&middle_small));
+        assert!(!r6.overlaps(&middle_small));
+        assert!(!r7.overlaps(&middle_small));
+        assert!(!r8.overlaps(&middle_small));
+        assert!(!r9.overlaps(&middle_small));
+    }
 
-        let r5 = Rect::<i32>::new(10, 19, 10, 10);
-        assert!(r1.overlaps(&r5));
-        assert!(r5.overlaps(&r1));
+    #[test]
+    fn test_bounds() {
+        let r1 = Rect::<i32>::new(2, 3, 4, 5);
+        assert_eq!(r1.right(), 6);
+        assert_eq!(r1.bottom(), 8);
     }
 }
