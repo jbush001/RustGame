@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct Rect<T> {
     pub left: T,
     pub top: T,
@@ -97,5 +97,26 @@ mod tests {
         let r1 = Rect::<i32>::new(2, 3, 4, 5);
         assert_eq!(r1.right(), 6);
         assert_eq!(r1.bottom(), 8);
+    }
+
+    #[test]
+    fn test_copy_clone() {
+        let r1 = Rect::<i32>::new(1, 2, 3, 4);
+        let r2 = r1;
+        let r3 = r1.clone();
+        assert_eq!(r2.left, 1);
+        assert_eq!(r3.left, 1);
+        assert_eq!(r2.top, 2);
+        assert_eq!(r3.top, 2);
+        assert_eq!(r2.width, 3);
+        assert_eq!(r3.width, 3);
+        assert_eq!(r2.height, 4);
+        assert_eq!(r3.height, 4);
+    }
+
+    #[test]
+    fn test_debug() {
+        let r1 = Rect::<i32>::new(1, 2, 3, 4);
+        assert_eq!("Rect { left: 1, top: 2, width: 3, height: 4 }", format!("{:?}", r1));
     }
 }
