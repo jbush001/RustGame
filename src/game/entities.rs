@@ -29,94 +29,8 @@ pub const COLL_MISSILE: u32 = 1;
 pub const COLL_PLAYER: u32 = 2;
 pub const COLL_OBJ: u32 = 4;
 
-pub struct Arrow {
-    xpos: f32,
-    ypos: f32,
-    xvec: f32,
-    yvec: f32,
-    angle: f32,
-    wobble: f32,
-    collided: bool,
-}
-
-impl Arrow {
-    pub fn new(xpos: f32, ypos: f32, angle: f32, velocity: f32) -> Arrow {
-        Arrow {
-            xpos,
-            ypos,
-            xvec: angle.cos() * velocity,
-            yvec: angle.sin() * velocity,
-            angle,
-            wobble: 0.0,
-            collided: false,
-        }
-    }
-}
-
-impl entity::Entity for Arrow {
-    fn update(
-        &mut self,
-        d_t: f32,
-        _new_entities: &mut Vec<Box<dyn entity::Entity>>,
-        _buttons: u32,
-        tile_map: &tilemap::TileMap,
-    ) {
-        if tile_map.is_solid(self.xpos as i32, self.ypos as i32) {
-            self.collided = true;
-        }
-
-        self.xpos += self.xvec * d_t;
-        self.ypos += self.yvec * d_t;
-        self.angle = self.yvec.atan2(self.xvec);
-        if self.yvec < 500.0 {
-            self.yvec += GRAVITY * d_t;
-        }
-
-        self.wobble += d_t * 10.0;
-    }
-
-    fn draw(&self, context: &mut gfx::RenderContext) {
-        context.draw_image(
-            (self.xpos as i32, self.ypos as i32),
-            &assets::SPR_ARROW,
-            self.angle + self.wobble.sin() * 0.1,
-            false,
-        );
-    }
-
-    fn is_live(&self) -> bool {
-        !self.collided
-    }
-
-    fn get_bounding_box(&self) -> util::Rect<i32> {
-        // We only track the tip of the arrow
-        util::Rect::<i32>::new(
-            (self.xpos + self.angle.cos() * 14.0) as i32,
-            (self.ypos + self.angle.sin() * 14.0) as i32,
-            4,
-            4,
-        )
-    }
-
-    fn get_collision_class(&self) -> u32 {
-        COLL_MISSILE
-    }
-
-    fn get_collision_mask(&self) -> u32 {
-        !COLL_MISSILE
-    }
-
-    fn collide(&mut self, _other: &dyn entity::Entity) {
-        self.collided = true;
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
 pub struct Player {
-    angle: f32,
+    bow_angle: f32,
 
     // The origin for the player is in the center, right at the shoulder
     // level (since the bow pivots around this point).
@@ -144,7 +58,7 @@ impl Player {
     pub fn new(xpos: f32, ypos: f32) -> Player {
         let ground_offset = assets::SPR_PLAYER_BODY_IDLE.5 as i32 - assets::SPR_PLAYER_BODY_IDLE.7;
         Player {
-            angle: -std::f32::consts::PI / 4.0,
+            bow_angle: -std::f32::consts::PI / 4.0,
             xpos,
             ypos: ypos + 64.0 - ground_offset as f32,
             bow_drawn: false,
@@ -214,9 +128,9 @@ impl entity::Entity for Player {
                 // It was released
                 let velocity = self.bow_draw_time.clamp(0.2, 0.4) * 5000.0;
                 let arrow_angle = if self.facing_left {
-                    std::f32::consts::PI - self.angle
+                    std::f32::consts::PI - self.bow_angle
                 } else {
-                    self.angle
+                    self.bow_angle
                 };
                 new_entities.push(Box::new(Arrow::new(
                     self.xpos,
@@ -238,12 +152,12 @@ impl entity::Entity for Player {
             }
 
             // Player can adjust angle when bow is drawn.
-            if buttons & entity::CONTROL_UP != 0 && self.angle > -std::f32::consts::PI / 2.0 {
-                self.angle -= d_t * std::f32::consts::PI;
+            if buttons & entity::CONTROL_UP != 0 && self.bow_angle > -std::f32::consts::PI / 2.0 {
+                self.bow_angle -= d_t * std::f32::consts::PI;
             }
 
-            if buttons & entity::CONTROL_DOWN != 0 && self.angle < std::f32::consts::PI / 2.0 {
-                self.angle += d_t * std::f32::consts::PI;
+            if buttons & entity::CONTROL_DOWN != 0 && self.bow_angle < std::f32::consts::PI / 2.0 {
+                self.bow_angle += d_t * std::f32::consts::PI;
             }
         }
 
@@ -378,15 +292,15 @@ impl entity::Entity for Player {
         );
 
         if self.bow_drawn {
-            let angle = if self.facing_left {
-                -self.angle
+            let bow_angle = if self.facing_left {
+                -self.bow_angle
             } else {
-                self.angle
+                self.bow_angle
             };
             context.draw_image(
                 (self.xpos as i32, self.ypos as i32),
                 &assets::SPR_PLAYER_BOW_DRAWN,
-                angle,
+                bow_angle,
                 self.facing_left,
             );
         } else {
@@ -439,6 +353,92 @@ impl entity::Entity for Player {
             self.killed = true;
             audio::play_effect(assets::SFX_DEATH);
         }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+pub struct Arrow {
+    xpos: f32,
+    ypos: f32,
+    xvec: f32,
+    yvec: f32,
+    angle: f32,
+    wobble: f32,
+    collided: bool,
+}
+
+impl Arrow {
+    pub fn new(xpos: f32, ypos: f32, angle: f32, velocity: f32) -> Arrow {
+        Arrow {
+            xpos,
+            ypos,
+            xvec: angle.cos() * velocity,
+            yvec: angle.sin() * velocity,
+            angle,
+            wobble: 0.0,
+            collided: false,
+        }
+    }
+}
+
+impl entity::Entity for Arrow {
+    fn update(
+        &mut self,
+        d_t: f32,
+        _new_entities: &mut Vec<Box<dyn entity::Entity>>,
+        _buttons: u32,
+        tile_map: &tilemap::TileMap,
+    ) {
+        if tile_map.is_solid(self.xpos as i32, self.ypos as i32) {
+            self.collided = true;
+        }
+
+        self.xpos += self.xvec * d_t;
+        self.ypos += self.yvec * d_t;
+        self.angle = self.yvec.atan2(self.xvec);
+        if self.yvec < 500.0 {
+            self.yvec += GRAVITY * d_t;
+        }
+
+        self.wobble += d_t * 10.0;
+    }
+
+    fn draw(&self, context: &mut gfx::RenderContext) {
+        context.draw_image(
+            (self.xpos as i32, self.ypos as i32),
+            &assets::SPR_ARROW,
+            self.angle + self.wobble.sin() * 0.1,
+            false,
+        );
+    }
+
+    fn is_live(&self) -> bool {
+        !self.collided
+    }
+
+    fn get_bounding_box(&self) -> util::Rect<i32> {
+        // We only track the tip of the arrow
+        util::Rect::<i32>::new(
+            (self.xpos + self.angle.cos() * 14.0) as i32,
+            (self.ypos + self.angle.sin() * 14.0) as i32,
+            4,
+            4,
+        )
+    }
+
+    fn get_collision_class(&self) -> u32 {
+        COLL_MISSILE
+    }
+
+    fn get_collision_mask(&self) -> u32 {
+        !COLL_MISSILE
+    }
+
+    fn collide(&mut self, _other: &dyn entity::Entity) {
+        self.collided = true;
     }
 
     fn as_any(&self) -> &dyn Any {
