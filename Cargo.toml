@@ -6,6 +6,7 @@ build = "build_assets.rs"
 
 [build-dependencies]
 image = "0.25.5"
+quick-xml = "0.37.2"
 
 [lib]
 name = "engine"

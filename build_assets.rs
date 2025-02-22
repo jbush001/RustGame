@@ -21,6 +21,10 @@
 //
 
 use image::*;
+use quick_xml::events::attributes::Attributes;
+use quick_xml::events::Event;
+use quick_xml::name::QName;
+use quick_xml::reader::Reader;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
@@ -29,6 +33,7 @@ use std::path::Path;
 
 type AtlasLocation = (f32, f32, f32, f32, u32, u32);
 
+#[derive(Debug)]
 struct TileMapInfo {
     source_path: String,
     width: usize,
@@ -56,13 +61,13 @@ fn main() {
     println!("cargo::rerun-if-changed=build.rs");
 
     let sprite_ids = read_sprite_list("assets/sprites.txt");
-    let tile_maps = read_tile_maps("assets/tile_maps.txt");
 
     let mut image_paths: HashSet<String> = HashSet::new();
-    for tile_map in &tile_maps {
-        for path in &tile_map.image_paths {
-            image_paths.insert(path.clone());
-        }
+    let tile_map = read_tmx_file("assets/map.tmx");
+
+    println!("{:?}", tile_map);
+    for path in &tile_map.image_paths {
+        image_paths.insert(path.clone());
     }
 
     for (_, path, _, _) in &sprite_ids {
@@ -99,24 +104,12 @@ fn main() {
         panic!("{}", msg);
     }
 
-    for tile_map_info in &tile_maps {
-        write_tile_map_file(&target_dir, tile_map_info, &image_coordinates);
-    }
+    write_tile_map_file(&target_dir, &tile_map, &image_coordinates);
 
     let audio_define_path = build_dir.clone() + "/sounds.rs";
     copy_sound_effects("assets/sound-effects.txt", &audio_define_path, &target_dir);
 
     copy_music_files("assets/sounds", &target_dir);
-}
-
-fn read_tile_maps(list_file: &str) -> Vec<TileMapInfo> {
-    let mut result: Vec<TileMapInfo> = Vec::new();
-    let map_list = std::fs::read_to_string(list_file).unwrap();
-    for filename in map_list.lines() {
-        result.push(read_tile_map(filename));
-    }
-
-    result
 }
 
 // Returns a list of identifier->path mappings
@@ -145,98 +138,11 @@ fn read_sprite_list(path: &str) -> Vec<(String, String, i32, i32)> {
     sprites
 }
 
-fn read_tile_map(filename: &str) -> TileMapInfo {
-    let path = format!("assets/{}", &filename);
-    println!("reading tile map {}", &path);
-
-    let tiles = std::fs::read_to_string(&path).unwrap();
-    let mut char_to_tile: HashMap<char, usize> = HashMap::new();
-    let mut tile_images: Vec<String> = Vec::new();
-    let mut tile_flags: Vec<u8> = Vec::new();
-
-    let mut reading_tile_images = true;
-
-    let mut map_data: Vec<Vec<u8>> = Vec::new();
-    let mut map_width = 0;
-    for (linenum, line) in tiles.lines().enumerate() {
-        if line.starts_with("------") {
-            if !reading_tile_images {
-                panic!("{}:{}: Unexpected separator", path, linenum + 1);
-            }
-
-            reading_tile_images = false;
-            continue;
-        }
-
-        if reading_tile_images {
-            // Information about each tile type
-            let tokens: Vec<&str> = line.split(' ').collect();
-            if tokens.len() != 3 {
-                panic!("{}:{}: Invalid line: needs 3 fields", path, linenum + 1);
-            }
-
-            if tokens[0].len() != 1 {
-                panic!("{}:{}: Invalid tile character", path, linenum + 1);
-            }
-
-            let ch = tokens[0].chars().next().unwrap();
-            if char_to_tile.contains_key(&ch) {
-                panic!("{}:{}: Duplicate tile character", path, linenum + 1);
-            }
-
-            char_to_tile.insert(ch, tile_images.len());
-            tile_images.push(tokens[1].trim().to_string());
-            tile_flags.push(tokens[2].trim().parse().unwrap());
-        } else {
-            // Filling actual map data
-            let mut row: Vec<u8> = Vec::new();
-            for c in line.chars() {
-                let tile_index = if c == ' ' {
-                    0
-                } else {
-                    if !char_to_tile.contains_key(&c) {
-                        panic!("{}:{}: Invalid tile character", path, linenum + 1);
-                    }
-
-                    char_to_tile.get(&c).unwrap() + 1
-                };
-
-                row.push(tile_index as u8);
-            }
-
-            if row.len() > map_width {
-                map_width = row.len();
-            }
-
-            map_data.push(row);
-        }
-    }
-
-    // Flatten the map
-    let map_height = map_data.len();
-    let mut encoded_map: Vec<u8> = Vec::new();
-    for row in map_data {
-        encoded_map.extend(row.clone().into_iter());
-        let padding = map_width - row.len();
-        if padding > 0 {
-            encoded_map.extend(std::iter::repeat(0).take(padding));
-        }
-    }
-
-    TileMapInfo {
-        source_path: filename.to_string(),
-        width: map_width,
-        height: map_height,
-        tile_data: encoded_map,
-        image_paths: tile_images,
-        tile_flags,
-    }
-}
-
 // Given a list of paths, return corresponding images.
 fn load_images(filenames: &HashSet<String>) -> Vec<(String, DynamicImage)> {
     let mut images: Vec<(String, DynamicImage)> = Vec::new();
     for filename in filenames.iter() {
+        println!("Loading image {}", filename);
         let img = ImageReader::open(format!("assets/{}", filename));
         if let Err(msg) = img {
             panic!("Failed to load {}: {}", filename, msg);
@@ -478,5 +384,141 @@ fn copy_music_files(from_dir: &str, to_dir: &str) {
                 }
             }
         }
+    }
+}
+
+fn get_attribute_value(attrs: &Attributes, name: &QName) -> Option<String> {
+    for attr in attrs.clone() {
+        let attru = attr.unwrap();
+        if attru.key == *name {
+            return Some(String::from_utf8(attru.value.to_vec()).unwrap());
+        }
+    }
+
+    None
+}
+
+fn read_tileset(filename: &str) -> (Vec<String>, Vec<u8>) {
+    let rawxml = std::fs::read_to_string(filename).unwrap();
+    let mut reader = Reader::from_str(&rawxml);
+    let mut buf = Vec::new();
+    let mut current_tile_id = 0;
+    let mut image_paths: Vec<String> = Vec::new();
+    let mut tile_flags: Vec<u8> = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Err(e) => panic!("Error at position {}: {:?}", reader.error_position(), e),
+            Ok(Event::Eof) => break,
+            Ok(Event::Start(e)) => {
+                if let QName(b"tile") = e.name() {
+                    current_tile_id = get_attribute_value(&e.attributes(), &QName(b"id"))
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    while image_paths.len() <= current_tile_id {
+                        image_paths.push(String::new());
+                        tile_flags.push(0);
+                    }
+                }
+            }
+            Ok(Event::Empty(e)) => match e.name() {
+                QName(b"image") => {
+                    image_paths[current_tile_id] =
+                        get_attribute_value(&e.attributes(), &QName(b"source")).unwrap();
+                }
+
+                QName(b"property") => {
+                    if get_attribute_value(&e.attributes(), &QName(b"value")).unwrap() == "true" {
+                        match get_attribute_value(&e.attributes(), &QName(b"name"))
+                            .unwrap()
+                            .as_str()
+                        {
+                            "ladder" => {
+                                tile_flags[current_tile_id] |= 2;
+                            }
+                            "solid" => {
+                                tile_flags[current_tile_id] |= 1;
+                            }
+                            _ => {
+                                println!("unknown attribute");
+                            }
+                        }
+                    }
+                }
+
+                _ => (),
+            },
+            _ => (),
+        }
+    }
+
+    (image_paths, tile_flags)
+}
+
+fn read_tmx_file(filename: &str) -> TileMapInfo {
+    let rawxml = std::fs::read_to_string(filename).unwrap();
+    let mut reader = Reader::from_str(&rawxml);
+    let mut buf = Vec::new();
+    let mut tile_data: Vec<u8> = Vec::new();
+    let mut image_paths: Vec<String> = Vec::new();
+    let mut tile_flags: Vec<u8> = Vec::new();
+    let mut width: usize = 0;
+    let mut height: usize = 0;
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Err(e) => panic!("Error at position {}: {:?}", reader.error_position(), e),
+            Ok(Event::Eof) => break,
+            Ok(Event::Start(e)) => match e.name() {
+                QName(b"layer") => {
+                    width = get_attribute_value(&e.attributes(), &QName(b"width"))
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    height = get_attribute_value(&e.attributes(), &QName(b"height"))
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    println!("layer {}x{}", width, height);
+                }
+
+                _ => (),
+            },
+            Ok(Event::Empty(e)) => match e.name() {
+                QName(b"tileset") => {
+                    let first_gid: u32 = get_attribute_value(&e.attributes(), &QName(b"firstgid"))
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    if first_gid != 1 {
+                        panic!("first_gid != 1");
+                    }
+
+                    let tsx_file = get_attribute_value(&e.attributes(), &QName(b"source")).unwrap();
+                    (image_paths, tile_flags) = read_tileset(&format!("assets/{}", tsx_file));
+                }
+
+                _ => (),
+            },
+            Ok(Event::Text(e)) => {
+                for elem in e.unescape().unwrap().split(",") {
+                    let tok = elem.trim();
+                    if !tok.is_empty() {
+                        tile_data.push(tok.parse().expect(""));
+                    }
+                }
+            }
+            _ => (),
+        }
+    }
+
+    TileMapInfo {
+        source_path: filename.to_string(),
+        width,
+        height,
+        tile_data,
+        image_paths,
+        tile_flags,
     }
 }

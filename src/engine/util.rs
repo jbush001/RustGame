@@ -117,6 +117,9 @@ mod tests {
     #[test]
     fn test_debug() {
         let r1 = Rect::<i32>::new(1, 2, 3, 4);
-        assert_eq!("Rect { left: 1, top: 2, width: 3, height: 4 }", format!("{:?}", r1));
+        assert_eq!(
+            "Rect { left: 1, top: 2, width: 3, height: 4 }",
+            format!("{:?}", r1)
+        );
     }
 }

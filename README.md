@@ -1,6 +1,7 @@
 # Setup
 
 Install Rust from <https://www.rust-lang.org/learn/get-started>
+Install Tiled level editor <https://www.mapeditor.org/>
 
 Install prerequisites (Linux)
 
