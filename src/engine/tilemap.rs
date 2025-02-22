@@ -33,6 +33,8 @@ pub struct TileMap {
     tile_flags: Vec<u8>,
     atlas_coords: Vec<(f32, f32, f32, f32, u32, u32, i32, i32)>,
     pub objects: Vec<(String, i32, i32)>,
+    pub player_start_x: i32,
+    pub player_start_y: i32,
 }
 
 impl TileMap {
@@ -62,6 +64,11 @@ impl TileMap {
         reader.read_exact(&mut buf).unwrap();
         let height = i32::from_le_bytes(buf);
         println!("Loading tilemap {}x{}", width, height);
+
+        reader.read_exact(&mut buf).unwrap();
+        let player_start_x = i32::from_le_bytes(buf);
+        reader.read_exact(&mut buf).unwrap();
+        let player_start_y = i32::from_le_bytes(buf);
 
         reader.read_exact(&mut buf).unwrap();
         let num_tiles = i32::from_le_bytes(buf);
@@ -120,6 +127,8 @@ impl TileMap {
             width,
             height,
             objects,
+            player_start_x,
+            player_start_y,
         }
     }
 

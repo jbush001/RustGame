@@ -42,6 +42,8 @@ struct TileMapInfo {
     image_paths: Vec<String>,
     tile_flags: Vec<u8>,
     objects: Vec<(String, i32, i32)>,
+    player_start_x: i32,
+    player_start_y: i32,
 }
 
 fn main() {
@@ -268,6 +270,8 @@ fn write_sprite_locations(
 //    magic [u8; 4]  "TMAP"
 //    width: u32
 //    height: u32
+//    player_start_x: i32,
+//    player_start_y: i32,
 //    num_tiles: u32
 //    tile_locs: [(f32, f32, f32, f32), num_tiles]
 //    tile_flags: [u8, num_tiles]
@@ -298,6 +302,13 @@ fn write_tile_map_file(
     writer
         .write_all(&(tile_map_info.height as u32).to_le_bytes())
         .unwrap();
+    writer
+        .write_all(&(tile_map_info.player_start_x).to_le_bytes())
+        .unwrap();
+    writer
+        .write_all(&(tile_map_info.player_start_y).to_le_bytes())
+        .unwrap();
+
     writer
         .write_all(&(tile_map_info.image_paths.len() as u32).to_le_bytes())
         .unwrap();
@@ -481,6 +492,8 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
     let mut objects: Vec<(String, i32, i32)> = Vec::new();
     let mut width: usize = 0;
     let mut height: usize = 0;
+    let mut player_start_x: i32 = 0;
+    let mut player_start_y: i32 = 0;
 
     loop {
         match reader.read_event_into(&mut buf) {
@@ -526,7 +539,13 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
                         .unwrap();
                     let objtype = get_attribute_value(&e.attributes(), &QName(b"type")).unwrap();
 
-                    objects.push((objtype.clone(), x_loc as i32, y_loc as i32));
+                    // This is a special object that indicates the player's start location.
+                    if objtype == "Player" {
+                        player_start_x = ((x_loc as i32 + 32) / 64) * 64;
+                        player_start_y = ((y_loc as i32 + 32) / 64) * 64;
+                    } else {
+                        objects.push((objtype.clone(), x_loc as i32, y_loc as i32));
+                    }
                 }
 
                 _ => (),
@@ -551,5 +570,7 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
         image_paths,
         tile_flags,
         objects,
+        player_start_x,
+        player_start_y,
     }
 }
