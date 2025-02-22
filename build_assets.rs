@@ -36,8 +36,8 @@ type AtlasLocation = (f32, f32, f32, f32, u32, u32);
 #[derive(Debug)]
 struct TileMapInfo {
     source_path: String,
-    width: usize,
-    height: usize,
+    width: i32,
+    height: i32,
     tile_data: Vec<u8>,
     image_paths: Vec<String>,
     tile_flags: Vec<u8>,
@@ -268,18 +268,16 @@ fn write_sprite_locations(
 //
 // Format
 //    magic [u8; 4]  "TMAP"
-//    width: u32
-//    height: u32
+//    width: i32
+//    height: i32
 //    player_start_x: i32,
 //    player_start_y: i32,
 //    num_tiles: u32
-//    tile_locs: [(f32, f32, f32, f32), num_tiles]
-//    tile_flags: [u8, num_tiles]
+//    tile_locs: [(f32, f32, f32, f32); num_tiles]
+//    tile_flags: [u8; num_tiles]
 //    map: [u8; width * height]
 //    num_objects: u32
 //    objects: [name: [u8; 32], x: i32, y: i32]
-//
-//  "255 tiles should be enough for anyone"
 //
 fn write_tile_map_file(
     target_dir: &str,
@@ -297,16 +295,16 @@ fn write_tile_map_file(
     const MAGIC: &[u8; 4] = b"TMAP";
     writer.write_all(MAGIC.as_bytes()).unwrap();
     writer
-        .write_all(&(tile_map_info.width as u32).to_le_bytes())
+        .write_all(&tile_map_info.width.to_le_bytes())
         .unwrap();
     writer
-        .write_all(&(tile_map_info.height as u32).to_le_bytes())
+        .write_all(&tile_map_info.height.to_le_bytes())
         .unwrap();
     writer
-        .write_all(&(tile_map_info.player_start_x).to_le_bytes())
+        .write_all(&tile_map_info.player_start_x.to_le_bytes())
         .unwrap();
     writer
-        .write_all(&(tile_map_info.player_start_y).to_le_bytes())
+        .write_all(&tile_map_info.player_start_y.to_le_bytes())
         .unwrap();
 
     writer
@@ -413,10 +411,10 @@ fn copy_music_files(from_dir: &str, to_dir: &str) {
     }
 }
 
-fn get_attribute_value(attrs: &Attributes, name: &QName) -> Option<String> {
+fn get_xml_attribute(attrs: &Attributes, name: &str) -> Option<String> {
     for attr in attrs.clone() {
         let attru = attr.unwrap();
-        if attru.key == *name {
+        if std::str::from_utf8(attru.key.as_ref()).unwrap() == name {
             return Some(String::from_utf8(attru.value.to_vec()).unwrap());
         }
     }
@@ -437,8 +435,8 @@ fn read_tileset(filename: &str) -> (Vec<String>, Vec<u8>) {
             Err(e) => panic!("Error at position {}: {:?}", reader.error_position(), e),
             Ok(Event::Eof) => break,
             Ok(Event::Start(e)) => {
-                if let QName(b"tile") = e.name() {
-                    current_tile_id = get_attribute_value(&e.attributes(), &QName(b"id"))
+                if e.name() == QName(b"tile") {
+                    current_tile_id = get_xml_attribute(&e.attributes(), "id")
                         .unwrap()
                         .parse()
                         .unwrap();
@@ -451,12 +449,12 @@ fn read_tileset(filename: &str) -> (Vec<String>, Vec<u8>) {
             Ok(Event::Empty(e)) => match e.name() {
                 QName(b"image") => {
                     image_paths[current_tile_id] =
-                        get_attribute_value(&e.attributes(), &QName(b"source")).unwrap();
+                        get_xml_attribute(&e.attributes(), "source").unwrap();
                 }
 
                 QName(b"property") => {
-                    if get_attribute_value(&e.attributes(), &QName(b"value")).unwrap() == "true" {
-                        match get_attribute_value(&e.attributes(), &QName(b"name"))
+                    if get_xml_attribute(&e.attributes(), "value").unwrap() == "true" {
+                        match get_xml_attribute(&e.attributes(), "name")
                             .unwrap()
                             .as_str()
                         {
@@ -490,8 +488,8 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
     let mut image_paths: Vec<String> = Vec::new();
     let mut tile_flags: Vec<u8> = Vec::new();
     let mut objects: Vec<(String, i32, i32)> = Vec::new();
-    let mut width: usize = 0;
-    let mut height: usize = 0;
+    let mut width: i32 = 0;
+    let mut height: i32 = 0;
     let mut player_start_x: i32 = 0;
     let mut player_start_y: i32 = 0;
 
@@ -501,11 +499,11 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
             Ok(Event::Eof) => break,
             Ok(Event::Start(e)) => match e.name() {
                 QName(b"layer") => {
-                    width = get_attribute_value(&e.attributes(), &QName(b"width"))
+                    width = get_xml_attribute(&e.attributes(), "width")
                         .unwrap()
                         .parse()
                         .unwrap();
-                    height = get_attribute_value(&e.attributes(), &QName(b"height"))
+                    height = get_xml_attribute(&e.attributes(), "height")
                         .unwrap()
                         .parse()
                         .unwrap();
@@ -516,7 +514,7 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
             },
             Ok(Event::Empty(e)) => match e.name() {
                 QName(b"tileset") => {
-                    let first_gid: u32 = get_attribute_value(&e.attributes(), &QName(b"firstgid"))
+                    let first_gid: u32 = get_xml_attribute(&e.attributes(), "firstgid")
                         .unwrap()
                         .parse()
                         .unwrap();
@@ -524,20 +522,20 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
                         panic!("first_gid != 1");
                     }
 
-                    let tsx_file = get_attribute_value(&e.attributes(), &QName(b"source")).unwrap();
+                    let tsx_file = get_xml_attribute(&e.attributes(), "source").unwrap();
                     (image_paths, tile_flags) = read_tileset(&format!("assets/{}", tsx_file));
                 }
 
                 QName(b"object") => {
-                    let x_loc: f32 = get_attribute_value(&e.attributes(), &QName(b"x"))
+                    let x_loc: f32 = get_xml_attribute(&e.attributes(), "x")
                         .unwrap()
                         .parse()
                         .unwrap();
-                    let y_loc: f32 = get_attribute_value(&e.attributes(), &QName(b"y"))
+                    let y_loc: f32 = get_xml_attribute(&e.attributes(), "y")
                         .unwrap()
                         .parse()
                         .unwrap();
-                    let objtype = get_attribute_value(&e.attributes(), &QName(b"type")).unwrap();
+                    let objtype = get_xml_attribute(&e.attributes(), "type").unwrap();
 
                     // This is a special object that indicates the player's start location.
                     if objtype == "Player" {

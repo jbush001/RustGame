@@ -39,14 +39,7 @@ pub struct TileMap {
 
 impl TileMap {
     pub fn new(path: &PathBuf) -> TileMap {
-        // Format
-        //    magic [u8; 4]  "TMAP"
-        //    width: u32
-        //    height: u32
-        //    num_tiles: u32
-        //    tile_locs: [(f32, f32, f32, f32), num_tiles]
-        //    map: [u8; width * height]
-
+        // See build_assets.rs, write_tile_map_file for file format.
         let file = std::fs::File::open(path).unwrap();
         let mut reader = std::io::BufReader::new(file);
 

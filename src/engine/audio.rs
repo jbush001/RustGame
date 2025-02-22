@@ -30,6 +30,7 @@ pub fn init_audio(audio_file_list: &[&str]) {
     for path in audio_file_list {
         let chunk = mixer::Chunk::from_file(exe_dir.join(path)).unwrap();
         unsafe {
+            #[allow(static_mut_refs)]
             EFFECTS.push(chunk);
         }
     }
