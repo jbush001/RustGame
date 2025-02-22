@@ -41,6 +41,7 @@ struct TileMapInfo {
     tile_data: Vec<u8>,
     image_paths: Vec<String>,
     tile_flags: Vec<u8>,
+    objects: Vec<(String, i32, i32)>,
 }
 
 fn main() {
@@ -271,6 +272,9 @@ fn write_sprite_locations(
 //    tile_locs: [(f32, f32, f32, f32), num_tiles]
 //    tile_flags: [u8, num_tiles]
 //    map: [u8; width * height]
+//    num_objects: u32
+//    objects: [name: [u8; 32], x: i32, y: i32]
+//
 //  "255 tiles should be enough for anyone"
 //
 fn write_tile_map_file(
@@ -316,6 +320,17 @@ fn write_tile_map_file(
     writer
         .write_all(tile_map_info.tile_data.as_slice())
         .unwrap();
+
+    let num_objects: u32 = tile_map_info.objects.len() as u32;
+    writer.write_all(&num_objects.to_le_bytes()).unwrap();
+    for (name, x, y) in &tile_map_info.objects {
+        let mut name_temp = [0u8; 32];
+        name_temp[..name.len()].copy_from_slice(name.as_bytes());
+        writer.write_all(&name_temp).unwrap();
+        writer.write_all(&x.to_le_bytes()).unwrap();
+        writer.write_all(&y.to_le_bytes()).unwrap();
+    }
+
     writer.flush().unwrap();
 }
 
@@ -463,6 +478,7 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
     let mut tile_data: Vec<u8> = Vec::new();
     let mut image_paths: Vec<String> = Vec::new();
     let mut tile_flags: Vec<u8> = Vec::new();
+    let mut objects: Vec<(String, i32, i32)> = Vec::new();
     let mut width: usize = 0;
     let mut height: usize = 0;
 
@@ -499,6 +515,20 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
                     (image_paths, tile_flags) = read_tileset(&format!("assets/{}", tsx_file));
                 }
 
+                QName(b"object") => {
+                    let x_loc: f32 = get_attribute_value(&e.attributes(), &QName(b"x"))
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    let y_loc: f32 = get_attribute_value(&e.attributes(), &QName(b"y"))
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    let objtype = get_attribute_value(&e.attributes(), &QName(b"type")).unwrap();
+
+                    objects.push((objtype.clone(), x_loc as i32, y_loc as i32));
+                }
+
                 _ => (),
             },
             Ok(Event::Text(e)) => {
@@ -520,5 +550,6 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
         tile_data,
         image_paths,
         tile_flags,
+        objects,
     }
 }

@@ -29,7 +29,7 @@ const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT * 2 / 3;
 pub struct GameEngine {
     _sdl: sdl2::Sdl,
     render_context: gfx::RenderContext,
-    tile_map: tilemap::TileMap,
+    pub tile_map: tilemap::TileMap,
     event_pump: sdl2::EventPump,
     entities: Vec<Box<dyn entity::Entity>>,
     max_x_scroll: i32,

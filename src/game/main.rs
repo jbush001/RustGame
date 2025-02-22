@@ -22,8 +22,13 @@ fn main() {
     let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
     // XXX player always needs to be first entity spawned
     eng.spawn_entity(Box::new(entities::Player::new(128.0, 320.0)));
-    eng.spawn_entity(Box::new(entities::Balloon::new(512.0, 7.0 * 64.0)));
     eng.load_tile_map("map.bin");
+    for (name, x, y) in eng.tile_map.objects.clone() {
+        if String::from("Balloon") == name {
+            eng.spawn_entity(Box::new(entities::Balloon::new(x as f32, y as f32)));
+        }
+    }
+
     let _temp = audio::play_music("music_track1.mp3");
     eng.run();
 }

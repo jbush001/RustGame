@@ -32,6 +32,7 @@ pub struct TileMap {
     tiles: Vec<u8>,
     tile_flags: Vec<u8>,
     atlas_coords: Vec<(f32, f32, f32, f32, u32, u32, i32, i32)>,
+    pub objects: Vec<(String, i32, i32)>,
 }
 
 impl TileMap {
@@ -94,12 +95,31 @@ impl TileMap {
         let mut tiles = vec![0; (width * height) as usize];
         reader.read_exact(&mut tiles).unwrap();
 
+        // Read object locations.
+        reader.read_exact(&mut buf).unwrap();
+        let num_objects = u32::from_le_bytes(buf) as usize;
+        let mut objects: Vec<(String, i32, i32)> = Vec::new();
+        for _ in 0..num_objects {
+            let mut name_buf = [0u8; 32];
+            reader.read_exact(&mut name_buf).unwrap();
+            let pos = name_buf.iter().position(|&x| x == 0).unwrap();
+            let name = String::from_utf8_lossy(&name_buf[..pos]).to_string();
+
+            reader.read_exact(&mut buf).unwrap();
+            let x = i32::from_le_bytes(buf);
+            reader.read_exact(&mut buf).unwrap();
+            let y = i32::from_le_bytes(buf);
+
+            objects.push((name, x, y));
+        }
+
         TileMap {
             tiles,
             tile_flags,
             atlas_coords,
             width,
             height,
+            objects,
         }
     }
 
