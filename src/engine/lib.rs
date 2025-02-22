@@ -20,11 +20,14 @@ pub mod gfx;
 pub mod tilemap;
 pub mod util;
 extern crate sdl2;
+use std::collections::HashMap;
 
 const LEFT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH / 3;
 const RIGHT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH * 2 / 3;
 const TOP_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT / 3;
 const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT * 2 / 3;
+
+type EntityCreateFn = fn(i32, i32) -> Box<dyn entity::Entity>;
 
 pub struct GameEngine {
     _sdl: sdl2::Sdl,
@@ -34,6 +37,7 @@ pub struct GameEngine {
     entities: Vec<Box<dyn entity::Entity>>,
     max_x_scroll: i32,
     max_y_scroll: i32,
+    entity_fns: HashMap<String, EntityCreateFn>,
 }
 
 fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
@@ -61,7 +65,12 @@ impl GameEngine {
             _sdl: sdl,
             max_x_scroll: 0,
             max_y_scroll: 0,
+            entity_fns: HashMap::new(),
         }
+    }
+
+    pub fn register_entity(&mut self, name: &str, create_fn: EntityCreateFn) {
+        self.entity_fns.insert(name.to_string(), create_fn);
     }
 
     pub fn load_tile_map(&mut self, file_name: &str) {
@@ -71,6 +80,14 @@ impl GameEngine {
         self.tile_map = tilemap::TileMap::new(&tile_map_path);
         self.max_x_scroll = self.tile_map.width * tilemap::TILE_SIZE - gfx::WINDOW_WIDTH;
         self.max_y_scroll = self.tile_map.height * tilemap::TILE_SIZE - gfx::WINDOW_HEIGHT;
+    }
+
+    pub fn create_entities(&mut self) {
+        for (name, x, y) in self.tile_map.objects.clone() {
+            let create_fn = self.entity_fns.get(&name).unwrap();
+            let entity = create_fn(x, y);
+            self.spawn_entity(entity);
+        }
     }
 
     pub fn run(&mut self) {

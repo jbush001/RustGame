@@ -20,6 +20,8 @@ use engine::*;
 
 fn main() {
     let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
+    eng.register_entity("Balloon", |x, y| Box::new(entities::Balloon::new(x as f32, y as f32)));
+
     eng.load_tile_map("map.bin");
 
     // Player always needs to be first entity spawned
@@ -28,15 +30,7 @@ fn main() {
         eng.tile_map.player_start_y as f32,
     )));
 
-    for (name, x, y) in eng.tile_map.objects.clone() {
-        let entity = match name.as_str() {
-            "Balloon" => Some(Box::new(entities::Balloon::new(x as f32, y as f32))),
-            _ => None,
-        }
-        .unwrap();
-
-        eng.spawn_entity(entity);
-    }
+    eng.create_entities();
 
     let _temp = audio::play_music("music_track1.mp3");
     eng.run();
