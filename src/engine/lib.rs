@@ -32,7 +32,7 @@ pub type EntityCreateFn = fn(i32, i32) -> Box<dyn entity::Entity>;
 pub struct GameEngine {
     _sdl: sdl2::Sdl,
     render_context: gfx::RenderContext,
-    pub tile_map: tilemap::TileMap,
+    tile_map: tilemap::TileMap,
     event_pump: sdl2::EventPump,
     entities: Vec<Box<dyn entity::Entity>>,
     max_x_scroll: i32,
@@ -82,11 +82,11 @@ impl GameEngine {
         self.max_y_scroll = self.tile_map.height * tilemap::TILE_SIZE - gfx::WINDOW_HEIGHT;
     }
 
-    pub fn create_entities(&mut self) {
+    fn create_entities(&mut self) {
         for (name, x, y) in self.tile_map.objects.clone() {
             let create_fn = self.entity_fns.get(&name).unwrap();
             let entity = create_fn(x, y);
-            self.spawn_entity(entity);
+            self.entities.push(entity);
         }
     }
 
@@ -94,6 +94,10 @@ impl GameEngine {
         let mut buttons: u32 = 0;
         let mut x_scroll: i32 = 0;
         let mut y_scroll: i32 = 0;
+
+        // XXX Ideally these would be spawned dynamically as the user moves into new
+        // areas
+        self.create_entities();
 
         'main: loop {
             for event in self.event_pump.poll_iter() {
@@ -155,7 +159,9 @@ impl GameEngine {
         }
     }
 
-    pub fn spawn_entity(&mut self, ent: Box<dyn entity::Entity>) {
-        self.entities.push(ent);
+    // This needs to be called before run, as the player is the first entity in the list.
+    pub fn spawn_player(&mut self, create_fn: EntityCreateFn) {
+        let entity = create_fn(self.tile_map.player_start_x, self.tile_map.player_start_y);
+        self.entities.push(entity);
     }
 }

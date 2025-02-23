@@ -26,13 +26,7 @@ fn main() {
 
     eng.load_tile_map("map.bin");
 
-    // Player always needs to be first entity spawned
-    eng.spawn_entity(Box::new(entities::Player::new(
-        eng.tile_map.player_start_x as f32,
-        eng.tile_map.player_start_y as f32,
-    )));
-
-    eng.create_entities();
+    eng.spawn_player(|x, y| Box::new(entities::Player::new(x as f32, y as f32)));
 
     let _temp = audio::play_music("music_track1.mp3");
     eng.run();
