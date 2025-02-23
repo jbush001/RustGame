@@ -29,6 +29,10 @@ pub const COLL_MISSILE: u32 = 1;
 pub const COLL_PLAYER: u32 = 2;
 pub const COLL_OBJ: u32 = 4;
 
+pub const ENTITY_LIST: &[(&str, engine::EntityCreateFn)] = &[
+    ("Balloon", |x, y| Box::new(Balloon::new(x as f32, y as f32))),
+];
+
 pub struct Player {
     bow_angle: f32,
 

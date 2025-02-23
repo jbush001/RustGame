@@ -20,7 +20,9 @@ use engine::*;
 
 fn main() {
     let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
-    eng.register_entity("Balloon", |x, y| Box::new(entities::Balloon::new(x as f32, y as f32)));
+    for (name, ctor) in entities::ENTITY_LIST {
+        eng.register_entity(name, *ctor);
+    }
 
     eng.load_tile_map("map.bin");
 

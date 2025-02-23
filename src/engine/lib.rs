@@ -27,7 +27,7 @@ const RIGHT_SCROLL_BOUNDARY: i32 = gfx::WINDOW_WIDTH * 2 / 3;
 const TOP_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT / 3;
 const BOTTOM_SCROLL_BOUNDARY: i32 = gfx::WINDOW_HEIGHT * 2 / 3;
 
-type EntityCreateFn = fn(i32, i32) -> Box<dyn entity::Entity>;
+pub type EntityCreateFn = fn(i32, i32) -> Box<dyn entity::Entity>;
 
 pub struct GameEngine {
     _sdl: sdl2::Sdl,
