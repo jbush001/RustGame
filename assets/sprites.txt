@@ -14,3 +14,5 @@ SPR_PLAYER_BODY_JUMP player/body-jump.png 16 20
 SPR_PLAYER_DEAD player/body-dead.png 28 -32
 SPR_PLAYER_CLIMB1 player/climb1.png 16 20
 SPR_PLAYER_CLIMB2 player/climb2.png 16 20
+SPR_BAT1 bat1.png 16 18
+SPR_BAT2 bat2.png 16 18

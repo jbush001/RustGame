@@ -21,6 +21,7 @@ use engine::entity;
 use engine::gfx;
 use engine::tilemap;
 use std::any::Any;
+use rand::prelude::*;
 
 pub const GRAVITY: f32 = 1500.0;
 
@@ -28,9 +29,11 @@ pub const GRAVITY: f32 = 1500.0;
 pub const COLL_MISSILE: u32 = 1;
 pub const COLL_PLAYER: u32 = 2;
 pub const COLL_OBJ: u32 = 4;
+pub const COLL_ENEMY: u32 = 8;
 
 pub const ENTITY_LIST: &[(&str, engine::EntityCreateFn)] = &[
     ("Balloon", |x, y| Box::new(Balloon::new(x as f32, y as f32))),
+    ("Bat", |x, y| Box::new(Bat::new(x as f32, y as f32))),
 ];
 
 pub struct Player {
@@ -91,6 +94,11 @@ impl entity::Entity for Player {
         tile_map: &tilemap::TileMap,
     ) {
         if self.killed {
+            if !tile_map.is_solid(self.xpos as i32 - 30, self.ypos as i32 + 45)
+                && !tile_map.is_solid(self.xpos as i32 + 30, self.ypos as i32 + 45) {
+                self.ypos += 4.0;
+            }
+
             return;
         }
 
@@ -348,7 +356,7 @@ impl entity::Entity for Player {
     }
 
     fn get_collision_mask(&self) -> u32 {
-        COLL_MISSILE
+        COLL_MISSILE | COLL_ENEMY
     }
 
     fn collide(&mut self, _other: &(dyn entity::Entity)) {
@@ -509,6 +517,93 @@ impl entity::Entity for Balloon {
         self.popped = true;
         audio::play_effect(assets::SFX_POP);
         // XXX start an animation
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+pub struct Bat {
+    xpos: f32,
+    ypos: f32,
+    anim_frame: i32,
+    anim_counter: i32,
+    killed: bool,
+    xdir: f32,
+    ydir: f32,
+    rng: ThreadRng,
+}
+
+impl Bat {
+    pub fn new(xpos: f32, ypos: f32) -> Bat {
+        Bat {
+            xpos,
+            ypos,
+            anim_frame: 0,
+            anim_counter: 0,
+            killed: false,
+            xdir: 16.0,
+            ydir: 16.0,
+            rng: rand::rng(),
+        }
+    }
+}
+
+impl entity::Entity for Bat {
+    fn update(
+        &mut self,
+        d_t: f32,
+        _new_entities: &mut Vec<Box<dyn entity::Entity>>,
+        _buttons: u32,
+        _tile_map: &tilemap::TileMap,
+    ) {
+        if self.anim_counter == 0 {
+            self.anim_counter = 10;
+            self.anim_frame = 1 - self.anim_frame;
+        } else {
+            self.anim_counter -= 1;
+        }
+
+        self.xpos += self.xdir * d_t;
+        self.ypos += self.ydir * d_t;
+
+        if self.rng.gen_range(0..100) < 5 {
+            self.xdir = - self.xdir;
+        }
+
+        if self.rng.gen_range(0..100) < 5 {
+            self.ydir = - self.ydir;
+        }
+    }
+
+    fn draw(&self, context: &mut gfx::RenderContext) {
+        context.draw_image(
+            (self.xpos as i32, self.ypos as i32),
+            if self.anim_frame == 0 { &assets::SPR_BAT1 } else { &assets::SPR_BAT2 },
+            0.0,
+            false,
+        );
+    }
+
+    fn is_live(&self) -> bool {
+        !self.killed
+    }
+
+    fn get_collision_class(&self) -> u32 {
+        COLL_ENEMY
+    }
+
+    fn get_collision_mask(&self) -> u32 {
+        COLL_MISSILE
+    }
+
+    fn get_bounding_box(&self) -> util::Rect<i32> {
+        util::Rect::<i32>::new(self.xpos as i32 - 10, self.ypos as i32 - 10, 10, 10)
+    }
+
+    fn collide(&mut self, _other: &dyn entity::Entity) {
+        self.killed = true;
     }
 
     fn as_any(&self) -> &dyn Any {
