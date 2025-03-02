@@ -92,6 +92,7 @@ impl entity::Entity for Player {
         new_entities: &mut Vec<Box<dyn entity::Entity>>,
         buttons: u32,
         tile_map: &tilemap::TileMap,
+        _player_rect: &util::Rect<i32>,
     ) {
         if self.killed {
             if !tile_map.is_solid(self.xpos as i32 - 30, self.ypos as i32 + 45)
@@ -404,6 +405,7 @@ impl entity::Entity for Arrow {
         _new_entities: &mut Vec<Box<dyn entity::Entity>>,
         _buttons: u32,
         tile_map: &tilemap::TileMap,
+        _player_rect: &util::Rect<i32>,
     ) {
         if tile_map.is_solid(self.xpos as i32, self.ypos as i32) {
             self.collided = true;
@@ -484,6 +486,7 @@ impl entity::Entity for Balloon {
         _new_entities: &mut Vec<Box<dyn entity::Entity>>,
         _buttons: u32,
         _tile_map: &tilemap::TileMap,
+        _player_rect: &util::Rect<i32>,
     ) {
         self.buoyancy += d_t;
         self.ypos += self.buoyancy.sin() * 0.5;
@@ -531,8 +534,6 @@ pub struct Bat {
     anim_frame: i32,
     anim_counter: i32,
     killed: bool,
-    xdir: f32,
-    ydir: f32,
     rng: ThreadRng,
 }
 
@@ -544,8 +545,6 @@ impl Bat {
             anim_frame: 0,
             anim_counter: 0,
             killed: false,
-            xdir: 16.0,
-            ydir: 16.0,
             rng: rand::rng(),
         }
     }
@@ -558,6 +557,7 @@ impl entity::Entity for Bat {
         _new_entities: &mut Vec<Box<dyn entity::Entity>>,
         _buttons: u32,
         _tile_map: &tilemap::TileMap,
+        player_rect: &util::Rect<i32>,
     ) {
         if self.anim_counter == 0 {
             self.anim_counter = 10;
@@ -566,16 +566,29 @@ impl entity::Entity for Bat {
             self.anim_counter -= 1;
         }
 
-        self.xpos += self.xdir * d_t;
-        self.ypos += self.ydir * d_t;
+        let mut xdir: f32 = if self.xpos < player_rect.left as f32 {
+            30.0
+        } else {
+            -30.0
+        };
 
-        if self.rng.gen_range(0..100) < 5 {
-            self.xdir = -self.xdir;
+        let mut ydir: f32 = if self.ypos < player_rect.top as f32 {
+            30.0
+        } else {
+            -30.0
+        };
+
+        if self.rng.random::<f32>() < 0.3 {
+            xdir = -xdir;
         }
 
-        if self.rng.gen_range(0..100) < 5 {
-            self.ydir = -self.ydir;
+        if self.rng.random::<f32>() < 0.3 {
+            ydir = -ydir;
         }
+
+        self.xpos += xdir * d_t;
+        self.ypos += ydir * d_t;
+
     }
 
     fn draw(&self, context: &mut gfx::RenderContext) {
@@ -604,7 +617,7 @@ impl entity::Entity for Bat {
     }
 
     fn get_bounding_box(&self) -> util::Rect<i32> {
-        util::Rect::<i32>::new(self.xpos as i32 - 10, self.ypos as i32 - 10, 10, 10)
+        util::Rect::<i32>::new(self.xpos as i32 - 10, self.ypos as i32 - 10, 20, 20)
     }
 
     fn collide(&mut self, _other: &dyn entity::Entity) {

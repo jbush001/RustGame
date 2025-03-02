@@ -33,6 +33,7 @@ pub trait Entity: Any {
         new_entities: &mut Vec<Box<dyn Entity>>,
         buttons: u32,
         tile_map: &tilemap::TileMap,
+        player_rect: &util::Rect<i32>,
     );
     fn draw(&self, context: &mut gfx::RenderContext);
     fn is_live(&self) -> bool;
