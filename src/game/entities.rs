@@ -20,8 +20,8 @@ use engine::audio;
 use engine::entity;
 use engine::gfx;
 use engine::tilemap;
-use std::any::Any;
 use rand::prelude::*;
+use std::any::Any;
 
 pub const GRAVITY: f32 = 1500.0;
 
@@ -95,7 +95,8 @@ impl entity::Entity for Player {
     ) {
         if self.killed {
             if !tile_map.is_solid(self.xpos as i32 - 30, self.ypos as i32 + 45)
-                && !tile_map.is_solid(self.xpos as i32 + 30, self.ypos as i32 + 45) {
+                && !tile_map.is_solid(self.xpos as i32 + 30, self.ypos as i32 + 45)
+            {
                 self.ypos += 4.0;
             }
 
@@ -569,18 +570,22 @@ impl entity::Entity for Bat {
         self.ypos += self.ydir * d_t;
 
         if self.rng.gen_range(0..100) < 5 {
-            self.xdir = - self.xdir;
+            self.xdir = -self.xdir;
         }
 
         if self.rng.gen_range(0..100) < 5 {
-            self.ydir = - self.ydir;
+            self.ydir = -self.ydir;
         }
     }
 
     fn draw(&self, context: &mut gfx::RenderContext) {
         context.draw_image(
             (self.xpos as i32, self.ypos as i32),
-            if self.anim_frame == 0 { &assets::SPR_BAT1 } else { &assets::SPR_BAT2 },
+            if self.anim_frame == 0 {
+                &assets::SPR_BAT1
+            } else {
+                &assets::SPR_BAT2
+            },
             0.0,
             false,
         );

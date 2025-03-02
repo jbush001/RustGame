@@ -94,6 +94,7 @@ impl GameEngine {
         let mut buttons: u32 = 0;
         let mut x_scroll: i32 = 0;
         let mut y_scroll: i32 = 0;
+        let mut new_entities: Vec<Box<dyn entity::Entity>> = Vec::new();
 
         // XXX Ideally these would be spawned dynamically as the user moves into new
         // areas
@@ -147,13 +148,26 @@ impl GameEngine {
                 util::Rect::<i32>::new(x_scroll, y_scroll, gfx::WINDOW_WIDTH, gfx::WINDOW_HEIGHT);
 
             self.tile_map.draw(&mut self.render_context, &visible_rect);
-            entity::do_frame(
-                &mut self.entities,
-                1.0 / 60.0,
-                &mut self.render_context,
-                buttons,
-                &self.tile_map,
-            );
+
+            // Ideally we compute this dynamically, but there are complications
+            // because the first few calls to poll events in SDL take a
+            // significantly longer period of time.
+            const D_T: f32 = 1.0 / 60.0;
+
+            entity::handle_collisions(&mut self.entities);
+            for entity in self.entities.iter_mut() {
+                entity.update(D_T, &mut new_entities, buttons, &self.tile_map);
+            }
+
+            self.entities.append(&mut new_entities);
+            new_entities.clear();
+
+            // XXX despawn things that are too far outsize visible rect
+            self.entities.retain(|entity| entity.is_live());
+
+            for entity in self.entities.iter() {
+                entity.draw(&mut self.render_context);
+            }
 
             self.render_context.render();
         }

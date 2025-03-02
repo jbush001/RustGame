@@ -454,10 +454,7 @@ fn read_tileset(filename: &str) -> (Vec<String>, Vec<u8>) {
 
                 QName(b"property") => {
                     if get_xml_attribute(&e.attributes(), "value").unwrap() == "true" {
-                        match get_xml_attribute(&e.attributes(), "name")
-                            .unwrap()
-                            .as_str()
-                        {
+                        match get_xml_attribute(&e.attributes(), "name").unwrap().as_str() {
                             "ladder" => {
                                 tile_flags[current_tile_id] |= 2;
                             }

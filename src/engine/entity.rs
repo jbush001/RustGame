@@ -53,34 +53,11 @@ pub trait Entity: Any {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub fn do_frame(
-    entities: &mut Vec<Box<dyn Entity>>,
-    d_t: f32,
-    context: &mut gfx::RenderContext,
-    buttons: u32,
-    tilemap: &tilemap::TileMap,
-) {
-    handle_collisions(entities);
-    let mut new_entities: Vec<Box<dyn Entity>> = Vec::new();
-    for entity in entities.iter_mut() {
-        entity.update(d_t, &mut new_entities, buttons, tilemap);
-    }
-
-    entities.append(&mut new_entities);
-
-    // XXX despawn things that are too far outsize visible rect
-    entities.retain(|entity| entity.is_live());
-
-    for entity in entities.iter() {
-        entity.draw(context);
-    }
-}
-
 // Check for objects overlapping and call their collision handlers
 // This is a brute force O(n^2) algorithm. While a broad phase step
 // would reduce the computational complexity, for fairly small
 // numbers of objects this is probably preferable.
-fn handle_collisions(entities: &mut Vec<Box<dyn Entity>>) {
+pub fn handle_collisions(entities: &mut Vec<Box<dyn Entity>>) {
     for i in 0..entities.len() - 1 {
         let (arr1, arr2) = entities.split_at_mut(i + 1);
         let e1 = &mut arr1[i];
