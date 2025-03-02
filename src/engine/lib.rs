@@ -156,7 +156,13 @@ impl GameEngine {
 
             entity::handle_collisions(&mut self.entities);
             for entity in self.entities.iter_mut() {
-                entity.update(D_T, &mut new_entities, buttons, &self.tile_map, &player_rect);
+                entity.update(
+                    D_T,
+                    &mut new_entities,
+                    buttons,
+                    &self.tile_map,
+                    &player_rect,
+                );
             }
 
             self.entities.append(&mut new_entities);

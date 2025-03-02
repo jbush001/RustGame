@@ -588,7 +588,6 @@ impl entity::Entity for Bat {
 
         self.xpos += xdir * d_t;
         self.ypos += ydir * d_t;
-
     }
 
     fn draw(&self, context: &mut gfx::RenderContext) {

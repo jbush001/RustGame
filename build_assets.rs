@@ -494,8 +494,8 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
         match reader.read_event_into(&mut buf) {
             Err(e) => panic!("Error at position {}: {:?}", reader.error_position(), e),
             Ok(Event::Eof) => break,
-            Ok(Event::Start(e)) => match e.name() {
-                QName(b"layer") => {
+            Ok(Event::Start(e)) => {
+                if let QName(b"layer") = e.name() {
                     width = get_xml_attribute(&e.attributes(), "width")
                         .unwrap()
                         .parse()
@@ -506,9 +506,7 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
                         .unwrap();
                     println!("layer {}x{}", width, height);
                 }
-
-                _ => (),
-            },
+            }
             Ok(Event::Empty(e)) => match e.name() {
                 QName(b"tileset") => {
                     let first_gid: u32 = get_xml_attribute(&e.attributes(), "firstgid")
