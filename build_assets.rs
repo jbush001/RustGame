@@ -69,13 +69,9 @@ fn main() {
     let tile_map = read_tmx_file("assets/map.tmx");
 
     println!("{:?}", tile_map);
-    for path in &tile_map.image_paths {
-        image_paths.insert(path.clone());
-    }
 
-    for (_, path, _, _) in &sprite_ids {
-        image_paths.insert(path.clone());
-    }
+    image_paths.extend(tile_map.image_paths.iter().cloned());
+    image_paths.extend(sprite_ids.iter().map(|(_, path, _, _)| path.clone()));
 
     println!("All images {:?}", image_paths);
     let mut images = load_images(&image_paths);
@@ -117,44 +113,38 @@ fn main() {
 
 // Returns a list of identifier->path mappings
 fn read_sprite_list(path: &str) -> Vec<(String, String, i32, i32)> {
-    let mut sprites: Vec<(String, String, i32, i32)> = Vec::new();
     let manifest = std::fs::read_to_string(path).unwrap();
-    for line in manifest.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
+    manifest
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let tokens: Vec<&str> = line.split(' ').collect();
+            if tokens.len() != 4 {
+                panic!("Invalid manifest line: {}", line);
+            }
 
-        let tokens: Vec<&str> = line.split(' ').collect();
-        if tokens.len() != 4 {
-            panic!("Invalid manifest line: {}", line);
-        }
-
-        sprites.push((
-            tokens[0].to_string(),
-            tokens[1].to_string(),
-            tokens[2].parse::<i32>().unwrap(),
-            tokens[3].parse::<i32>().unwrap(),
-        ));
-    }
-
-    sprites
+            (
+                tokens[0].to_string(),
+                tokens[1].to_string(),
+                tokens[2].parse::<i32>().unwrap(),
+                tokens[3].parse::<i32>().unwrap(),
+            )
+        })
+        .collect()
 }
 
 // Given a list of paths, return corresponding images.
 fn load_images(filenames: &HashSet<String>) -> Vec<(String, DynamicImage)> {
-    let mut images: Vec<(String, DynamicImage)> = Vec::new();
-    for filename in filenames.iter() {
-        println!("Loading image {}", filename);
-        let img = ImageReader::open(format!("assets/{}", filename));
-        if let Err(msg) = img {
-            panic!("Failed to load {}: {}", filename, msg);
-        }
+    let images: Result<Vec<(String, DynamicImage)>, image::ImageError> = filenames
+        .iter()
+        .map(|filename| {
+            let img = ImageReader::open(format!("assets/{}", filename))?.decode()?;
+            Ok((filename.clone(), img))
+        })
+        .collect();
 
-        images.push((filename.clone(), img.unwrap().decode().unwrap()));
-    }
-
-    images
+    images.unwrap()
 }
 
 struct AtlasAllocator {
@@ -345,20 +335,16 @@ fn write_tile_map_file(
 
 fn copy_sound_effects(manifest_path: &str, defines_path: &str, output_dir: &str) {
     let manifest = std::fs::read_to_string(manifest_path).unwrap();
-    let mut files: Vec<(String, String)> = Vec::new();
-    for line in manifest.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-
-        let tokens: Vec<&str> = line.split(' ').collect();
-        if tokens.len() != 2 {
-            panic!("Invalid manifest line: {}", line);
-        }
-
-        files.push((tokens[0].to_string(), tokens[1].to_string()));
-    }
+    let files: Vec<(String, String)> = manifest
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            line.split_once(' ')
+                .map(|(first, second)| (first.to_string(), second.to_string()))
+                .unwrap()
+        })
+        .collect();
 
     // Copy the files
     for (_, path) in files.clone().into_iter() {
@@ -412,14 +398,14 @@ fn copy_music_files(from_dir: &str, to_dir: &str) {
 }
 
 fn get_xml_attribute(attrs: &Attributes, name: &str) -> Option<String> {
-    for attr in attrs.clone() {
-        let attru = attr.unwrap();
+    attrs.clone().find_map(|attr| {
+        let attru = attr.as_ref().ok()?; // Handle potential errors from attr.as_ref()
         if std::str::from_utf8(attru.key.as_ref()).unwrap() == name {
-            return Some(String::from_utf8(attru.value.to_vec()).unwrap());
+            String::from_utf8(attru.value.as_ref().to_vec()).ok()
+        } else {
+            None
         }
-    }
-
-    None
+    })
 }
 
 fn read_tileset(filename: &str) -> (Vec<String>, Vec<u8>) {
@@ -544,12 +530,14 @@ fn read_tmx_file(filename: &str) -> TileMapInfo {
                 _ => (),
             },
             Ok(Event::Text(e)) => {
-                for elem in e.unescape().unwrap().split(",") {
-                    let tok = elem.trim();
-                    if !tok.is_empty() {
-                        tile_data.push(tok.parse().expect(""));
-                    }
-                }
+                tile_data.extend(
+                    e.unescape()
+                        .unwrap()
+                        .split(',')
+                        .map(|elem| elem.trim())
+                        .filter(|tok| !tok.is_empty())
+                        .map(|tok| tok.parse::<u8>().expect("")),
+                );
             }
             _ => (),
         }

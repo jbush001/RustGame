@@ -155,7 +155,7 @@ impl GameEngine {
             const D_T: f32 = 1.0 / 60.0;
 
             entity::handle_collisions(&mut self.entities);
-            for entity in self.entities.iter_mut() {
+            self.entities.iter_mut().for_each(|entity| {
                 entity.update(
                     D_T,
                     &mut new_entities,
@@ -163,7 +163,7 @@ impl GameEngine {
                     &self.tile_map,
                     &player_rect,
                 );
-            }
+            });
 
             self.entities.append(&mut new_entities);
             new_entities.clear();
@@ -171,9 +171,9 @@ impl GameEngine {
             // XXX despawn things that are too far outsize visible rect
             self.entities.retain(|entity| entity.is_live());
 
-            for entity in self.entities.iter() {
+            self.entities.iter().for_each(|entity| {
                 entity.draw(&mut self.render_context);
-            }
+            });
 
             self.render_context.render();
         }

@@ -27,12 +27,13 @@ pub fn init_audio(audio_file_list: &[&str]) {
 
     let exe_path = std::env::current_exe().unwrap();
     let exe_dir = exe_path.parent().unwrap();
-    for path in audio_file_list {
-        let chunk = mixer::Chunk::from_file(exe_dir.join(path)).unwrap();
-        unsafe {
-            #[allow(static_mut_refs)]
-            EFFECTS.push(chunk);
-        }
+    unsafe {
+        #[allow(static_mut_refs)]
+        EFFECTS.extend(
+            audio_file_list
+                .iter()
+                .map(|path| mixer::Chunk::from_file(exe_dir.join(path)).unwrap()),
+        );
     }
 }
 
