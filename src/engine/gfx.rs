@@ -136,7 +136,7 @@ fn rotate(point: &(f32, f32), matrix: &(f32, f32, f32, f32)) -> (f32, f32) {
 }
 
 impl RenderContext {
-    pub fn new(sdl: &sdl2::Sdl) -> Result<Self, String> {
+    pub fn new(sdl: &sdl2::Sdl) -> RenderContext {
         let video_subsystem = sdl.video().unwrap();
         let window = video_subsystem
             .window("Game", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
@@ -150,12 +150,7 @@ impl RenderContext {
             .gl_set_swap_interval(sdl2::video::SwapInterval::VSync)
             .unwrap();
 
-        let compile_result = compile_program(VERTEX_SHADER, FRAGMENT_SHADER);
-        if let Err(msg) = compile_result {
-            panic!("{}", msg);
-        }
-
-        let program = compile_result.unwrap();
+        let program = compile_program(VERTEX_SHADER, FRAGMENT_SHADER);
         let (position_attrib, texcoord_attrib) = unsafe {
             gl::UseProgram(program);
             (
@@ -188,7 +183,7 @@ impl RenderContext {
 
         check_gl_error();
 
-        Ok(RenderContext {
+        RenderContext {
             window,
             _gl_context: gl_context,
             vbo,
@@ -197,7 +192,7 @@ impl RenderContext {
             offset: (0, 0),
             position_attrib,
             texcoord_attrib,
-        })
+        }
     }
 
     pub fn set_offset(&mut self, x: i32, y: i32) {
@@ -344,7 +339,7 @@ impl RenderContext {
     }
 }
 
-fn compile_shader(shader_type: GLuint, source: &str) -> Result<GLuint, String> {
+fn compile_shader(shader_type: GLuint, source: &str) -> GLuint {
     unsafe {
         let shader = gl::CreateShader(shader_type);
         check_gl_error();
@@ -362,19 +357,19 @@ fn compile_shader(shader_type: GLuint, source: &str) -> Result<GLuint, String> {
             let mut v: [u8; 1024] = [0; 1024];
             let mut log_length = 0i32;
             gl::GetShaderInfoLog(shader, 1024, &mut log_length, v.as_mut_ptr().cast());
-            return Err(format!(
+            panic!(
                 "Shader compile error {}",
                 String::from_utf8_lossy(&v[..log_length as usize])
-            ));
+            );
         }
 
-        Ok(shader)
+        shader
     }
 }
 
-fn compile_program(vertex_source: &str, fragment_source: &str) -> Result<GLuint, String> {
-    let vertex_shader = compile_shader(gl::VERTEX_SHADER, vertex_source)?;
-    let fragment_shader = compile_shader(gl::FRAGMENT_SHADER, fragment_source)?;
+fn compile_program(vertex_source: &str, fragment_source: &str) -> GLuint {
+    let vertex_shader = compile_shader(gl::VERTEX_SHADER, vertex_source);
+    let fragment_shader = compile_shader(gl::FRAGMENT_SHADER, fragment_source);
 
     unsafe {
         let program = gl::CreateProgram();
@@ -391,14 +386,14 @@ fn compile_program(vertex_source: &str, fragment_source: &str) -> Result<GLuint,
 
             let temp_msg = std::mem::transmute::<[i8; 1024], [u8; 1024]>(v);
 
-            return Err(format!(
+            panic!(
                 "Error linking shaders {}",
                 String::from_utf8_lossy(&temp_msg[..log_length as usize] as &[u8])
-            ));
+            );
         }
 
         check_gl_error();
 
-        Ok(program)
+        program
     }
 }

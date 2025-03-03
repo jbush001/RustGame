@@ -58,7 +58,7 @@ impl GameEngine {
         audio::init_audio(audio_file_list);
 
         GameEngine {
-            render_context: gfx::RenderContext::new(&sdl).unwrap(),
+            render_context: gfx::RenderContext::new(&sdl),
             tile_map: tilemap::TileMap::default(),
             event_pump: sdl.event_pump().unwrap(),
             entities: Vec::new(),
