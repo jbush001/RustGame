@@ -133,6 +133,10 @@ impl entity::Entity for Player {
         {
             self.climbing = true;
             self.bow_drawn = false;
+
+            // Snap player to center of ladder
+            self.xpos = (self.xpos / tilemap::TILE_SIZE_F).floor() * tilemap::TILE_SIZE_F
+                + (tilemap::TILE_SIZE_F / 2.0);
             return;
         }
 
