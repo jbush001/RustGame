@@ -15,12 +15,13 @@
 //
 
 use crate::assets;
-use crate::util;
 use engine::audio;
 use engine::entity;
 use engine::gfx;
 use engine::tilemap;
-use rand::prelude::*;
+use engine::util;
+use rand::rngs::ThreadRng;
+use rand::Rng;
 use std::any::Any;
 
 pub const GRAVITY: f32 = 1500.0;

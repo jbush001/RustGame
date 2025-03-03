@@ -83,11 +83,11 @@ impl GameEngine {
     }
 
     fn create_entities(&mut self) {
-        for (name, x, y) in self.tile_map.objects.clone() {
-            let create_fn = self.entity_fns.get(&name).unwrap();
-            let entity = create_fn(x, y);
-            self.entities.push(entity);
-        }
+        self.entities
+            .extend(self.tile_map.objects.clone().iter().map(|(name, x, y)| {
+                let create_fn = self.entity_fns.get(name).unwrap();
+                create_fn(*x, *y)
+            }));
     }
 
     pub fn run(&mut self) {

@@ -20,7 +20,7 @@
 // file with the coordinates, which will be compiled into the program.
 //
 
-use image::*;
+use image::{DynamicImage, GenericImage, GenericImageView, ImageReader};
 use quick_xml::events::attributes::Attributes;
 use quick_xml::events::Event;
 use quick_xml::name::QName;
@@ -283,7 +283,7 @@ fn write_tile_map_file(
     let output_file = fs::File::create(dest_path).unwrap();
     let mut writer = std::io::BufWriter::new(output_file);
     const MAGIC: &[u8; 4] = b"TMAP";
-    writer.write_all(MAGIC.as_bytes()).unwrap();
+    writer.write_all(MAGIC).unwrap();
     writer
         .write_all(&tile_map_info.width.to_le_bytes())
         .unwrap();

@@ -16,7 +16,7 @@
 
 mod assets;
 mod entities;
-use engine::*;
+use engine::{audio, GameEngine};
 
 fn main() {
     let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
