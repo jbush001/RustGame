@@ -87,7 +87,7 @@ fn main() {
 
     // Write out a rust file with all of the sprite locations. This will be linked
     // into the executable.
-    let sprite_define_path = build_dir.clone() + "/sprites.rs";
+    let sprite_define_path = format!("{}/sprites.rs", build_dir);
     write_sprite_locations(&sprite_define_path, &sprite_ids, &image_coordinates);
 
     // Write out the new atlas image.
@@ -105,7 +105,7 @@ fn main() {
 
     write_tile_map_file(&target_dir, &tile_map, &image_coordinates);
 
-    let audio_define_path = build_dir.clone() + "/sounds.rs";
+    let audio_define_path = format!("{}/sounds.rs", build_dir);
     copy_sound_effects("assets/sound-effects.txt", &audio_define_path, &target_dir);
 
     copy_music_files("assets/sounds", &target_dir);
@@ -347,8 +347,8 @@ fn copy_sound_effects(manifest_path: &str, defines_path: &str, output_dir: &str)
         .collect();
 
     // Copy the files
-    for (_, path) in files.clone().into_iter() {
-        let source_path = "assets/".to_owned() + &path.clone();
+    for (_, path) in &files {
+        let source_path = format!("assets/{}", path);
         let dest = Path::new(&source_path)
             .file_name()
             .unwrap()
@@ -364,7 +364,7 @@ fn copy_sound_effects(manifest_path: &str, defines_path: &str, output_dir: &str)
 
     // Write a source file
     let mut defines_file = fs::File::create(defines_path).unwrap();
-    for (index, (name, _path)) in files.clone().into_iter().enumerate() {
+    for (index, (name, _path)) in files.iter().enumerate() {
         writeln!(defines_file, "pub const {}: usize = {};", name, index).unwrap();
     }
 
