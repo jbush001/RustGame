@@ -14,6 +14,9 @@
 // limitations under the License.
 //
 
+use std::io::Read;
+use std::path::PathBuf;
+
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Rect<T> {
     pub left: T,
@@ -45,6 +48,41 @@ impl<T: std::ops::Add<Output = T> + std::cmp::PartialOrd<T> + Clone + Copy> Rect
 
     pub fn bottom(&self) -> T {
         self.top + self.height
+    }
+}
+
+pub struct StructuredFileReader {
+    reader: std::io::BufReader<std::fs::File>,
+}
+
+impl StructuredFileReader {
+    pub fn new(path: &PathBuf) -> StructuredFileReader {
+        let file = std::fs::File::open(path).unwrap();
+        let reader = std::io::BufReader::new(file);
+
+        StructuredFileReader { reader }
+    }
+
+    pub fn read_i32(&mut self) -> i32 {
+        let mut buf = [0u8; 4];
+        self.reader.read_exact(&mut buf).unwrap();
+        i32::from_le_bytes(buf)
+    }
+
+    pub fn read_u32(&mut self) -> u32 {
+        let mut buf = [0u8; 4];
+        self.reader.read_exact(&mut buf).unwrap();
+        u32::from_le_bytes(buf)
+    }
+
+    pub fn read_f32(&mut self) -> f32 {
+        let mut buf = [0u8; 4];
+        self.reader.read_exact(&mut buf).unwrap();
+        f32::from_le_bytes(buf)
+    }
+
+    pub fn read_slice(&mut self, slice: &mut [u8]) {
+        self.reader.read_exact(slice).unwrap();
     }
 }
 

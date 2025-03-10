@@ -16,7 +16,6 @@
 
 use crate::gfx;
 use crate::util;
-use std::io::Read;
 use std::path::PathBuf;
 
 pub const TILE_SIZE: i32 = 64;
@@ -40,41 +39,30 @@ pub struct TileMap {
 impl TileMap {
     pub fn new(path: &PathBuf) -> TileMap {
         // See build_assets.rs, write_tile_map_file for file format.
-        let file = std::fs::File::open(path).unwrap();
-        let mut reader = std::io::BufReader::new(file);
+        let mut reader = util::StructuredFileReader::new(path);
 
         // Check magic
-        let mut magic = [0; 4];
-        reader.read_exact(&mut magic).unwrap();
-        if &magic != b"TMAP" {
+        let magic = reader.read_u32();
+        if magic != 0x50414D54 {
+            // b"TMAP"
             panic!("Invalid tilemap file");
         }
 
         // Read width and height
-        let mut buf = [0u8; 4];
-        reader.read_exact(&mut buf).unwrap();
-        let width = i32::from_le_bytes(buf);
-        reader.read_exact(&mut buf).unwrap();
-        let height = i32::from_le_bytes(buf);
+        let width = reader.read_i32();
+        let height = reader.read_i32();
         println!("Loading tilemap {}x{}", width, height);
 
-        reader.read_exact(&mut buf).unwrap();
-        let player_start_x = i32::from_le_bytes(buf);
-        reader.read_exact(&mut buf).unwrap();
-        let player_start_y = i32::from_le_bytes(buf);
+        let player_start_x = reader.read_i32();
+        let player_start_y = reader.read_i32();
 
-        reader.read_exact(&mut buf).unwrap();
-        let num_tiles = i32::from_le_bytes(buf);
+        let num_tiles = reader.read_u32() as usize;
         let mut atlas_coords = Vec::new();
         for _ in 0..num_tiles {
-            reader.read_exact(&mut buf).unwrap();
-            let left = f32::from_le_bytes(buf);
-            reader.read_exact(&mut buf).unwrap();
-            let top = f32::from_le_bytes(buf);
-            reader.read_exact(&mut buf).unwrap();
-            let right = f32::from_le_bytes(buf);
-            reader.read_exact(&mut buf).unwrap();
-            let bottom = f32::from_le_bytes(buf);
+            let left = reader.read_f32();
+            let top = reader.read_f32();
+            let right = reader.read_f32();
+            let bottom = reader.read_f32();
 
             atlas_coords.push((
                 left,
@@ -88,27 +76,23 @@ impl TileMap {
             ));
         }
 
-        let mut tile_flags = vec![0; num_tiles as usize];
-        reader.read_exact(&mut tile_flags).unwrap();
+        let mut tile_flags = vec![0; num_tiles];
+        reader.read_slice(&mut tile_flags[..]);
 
         // Read tile data
         let mut tiles = vec![0; (width * height) as usize];
-        reader.read_exact(&mut tiles).unwrap();
+        reader.read_slice(&mut tiles[..]);
 
         // Read object locations.
-        reader.read_exact(&mut buf).unwrap();
-        let num_objects = u32::from_le_bytes(buf) as usize;
+        let num_objects = reader.read_u32() as usize;
         let mut objects: Vec<(String, i32, i32)> = Vec::new();
         for _ in 0..num_objects {
             let mut name_buf = [0u8; 32];
-            reader.read_exact(&mut name_buf).unwrap();
+            reader.read_slice(&mut name_buf);
             let pos = name_buf.iter().position(|&x| x == 0).unwrap();
             let name = String::from_utf8_lossy(&name_buf[..pos]).to_string();
-
-            reader.read_exact(&mut buf).unwrap();
-            let x = i32::from_le_bytes(buf);
-            reader.read_exact(&mut buf).unwrap();
-            let y = i32::from_le_bytes(buf);
+            let x = reader.read_i32();
+            let y = reader.read_i32();
 
             objects.push((name, x, y));
         }
