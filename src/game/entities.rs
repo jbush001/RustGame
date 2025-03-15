@@ -152,8 +152,10 @@ impl entity::Entity for Player {
                     self.bow_angle
                 };
                 new_entities.push(Box::new(Arrow::new(
-                    self.xpos,
-                    self.ypos,
+                    // Give the arrow a little bit of a start so player doesn't
+                    // accidently collide with it.
+                    self.xpos + arrow_angle.cos() * 10.0,
+                    self.ypos + arrow_angle.sin() * 10.0,
                     arrow_angle,
                     velocity,
                 )));
