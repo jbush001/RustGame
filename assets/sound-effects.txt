@@ -2,3 +2,4 @@ SFX_ARROW sounds/arrow.wav
 SFX_DEATH sounds/death.wav
 SFX_POP sounds/pop.wav
 SFX_PAUSE sounds/pause.wav
+SFX_BAT_DEATH sounds/bat-death.wav

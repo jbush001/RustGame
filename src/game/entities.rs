@@ -573,28 +573,49 @@ impl entity::Entity for Bat {
             self.anim_counter -= 1;
         }
 
-        let mut xdir: f32 = if self.xpos < player_rect.left as f32 {
-            30.0
+        let dx = player_rect.left - self.xpos as i32;
+        let dy = player_rect.top - self.ypos as i32;
+
+        if dx.abs() < 300 && dy.abs() < 300 {
+            // Follow player
+            let mut xdir: f32 = if dx > 0 {
+                30.0
+            } else {
+                -30.0
+            };
+
+            let mut ydir: f32 = if dy > 0 {
+                30.0
+            } else {
+                -30.0
+            };
+
+            if self.rng.random::<f32>() < 0.2 {
+                xdir = -xdir;
+            }
+
+            if self.rng.random::<f32>() < 0.2 {
+                ydir = -ydir;
+            }
+
+            self.xpos += xdir * d_t;
+            self.ypos += ydir * d_t;
         } else {
-            -30.0
-        };
+            let xdir = if self.rng.random::<f32>() < 0.5 {
+                -30.0
+            } else {
+                30.0
+            };
 
-        let mut ydir: f32 = if self.ypos < player_rect.top as f32 {
-            30.0
-        } else {
-            -30.0
-        };
+            let ydir = if self.rng.random::<f32>() < 0.5 {
+                -30.0
+            } else {
+                30.0
+            };
 
-        if self.rng.random::<f32>() < 0.3 {
-            xdir = -xdir;
+            self.xpos += xdir * d_t;
+            self.ypos += ydir * d_t;
         }
-
-        if self.rng.random::<f32>() < 0.3 {
-            ydir = -ydir;
-        }
-
-        self.xpos += xdir * d_t;
-        self.ypos += ydir * d_t;
     }
 
     fn draw(&self, context: &mut gfx::RenderContext) {
@@ -627,7 +648,10 @@ impl entity::Entity for Bat {
     }
 
     fn collide(&mut self, _other: &dyn entity::Entity) {
-        self.killed = true;
+        if !self.killed {
+            self.killed = true;
+            audio::play_effect(assets::SFX_BAT_DEATH);
+        }
     }
 
     fn as_any(&self) -> &dyn Any {
