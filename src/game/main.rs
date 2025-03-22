@@ -47,6 +47,7 @@ fn main() {
     let mut y_scroll: i32 = 0;
     let mut new_entities: Vec<Box<dyn entity::Entity>> = Vec::new();
     let mut menu_open = false;
+    let mut menu_anim = ui::Interpolant::new(0.0);
 
     // XXX Ideally these would be spawned dynamically as the user moves into new
     // areas
@@ -63,6 +64,13 @@ fn main() {
                 } => {
                     if keycode == sdl2::keyboard::Keycode::Escape {
                         menu_open = !menu_open;
+                        if menu_open {
+                            audio::play_effect(assets::SFX_PAUSE);
+                            audio::pause_music();
+                            menu_anim.start(0.3, 0.0, 1.0);
+                        } else {
+                            audio::resume_music();
+                        }
                     } else {
                         buttons |= engine::get_key_mask(keycode);
                     }
@@ -78,6 +86,11 @@ fn main() {
                 _ => {}
             }
         }
+
+        // Ideally we compute this dynamically, but there are complications
+        // because the first few calls to poll events in SDL take a
+        // significantly longer period of time.
+        const D_T: f32 = 1.0 / 60.0;
 
         if !menu_open {
             let player_rect = eng.entities[0].get_bounding_box();
@@ -100,11 +113,6 @@ fn main() {
             }
 
             eng.render_context.set_offset(x_scroll, y_scroll);
-
-            // Ideally we compute this dynamically, but there are complications
-            // because the first few calls to poll events in SDL take a
-            // significantly longer period of time.
-            const D_T: f32 = 1.0 / 60.0;
 
             entity::handle_collisions(&mut eng.entities);
             eng.entities.iter_mut().for_each(|entity| {
@@ -134,12 +142,14 @@ fn main() {
         });
 
         if menu_open {
+            let value = menu_anim.update(D_T);
+
             ui::draw_nine_tile(
                 &mut eng.render_context,
                 50,
                 20,
-                350,
-                400,
+                40 + (value * 250.0) as i32,
+                40 + (value * 350.0) as i32,
                 &NINE_TILE
             );
         }

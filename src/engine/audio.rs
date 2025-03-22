@@ -47,3 +47,11 @@ pub fn play_music(file_name: &str) -> sdl2::mixer::Music {
     music.play(-1).unwrap();
     music
 }
+
+pub fn pause_music() {
+    sdl2::mixer::Music::pause();
+}
+
+pub fn resume_music() {
+    sdl2::mixer::Music::resume();
+}
