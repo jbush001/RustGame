@@ -16,22 +16,28 @@
 
 use crate::gfx;
 
-pub struct Interpolant {
+pub struct Interpolator {
     t: f32,
     max_t: f32,
     start_value: f32,
     end_value: f32,
     multiplier: f32,
+    easing_fn: fn(f32) -> f32,
 }
 
-impl Interpolant {
-    pub fn new(value: f32) -> Interpolant {
-        Interpolant {
+pub fn cubic_inout(x: f32) -> f32 {
+    if x < 0.5 { 4.0 * x * x * x } else { 1.0 - (-2.0 * x + 2.0).powf(3.0) / 2.0 }
+}
+
+impl Interpolator {
+    pub fn new(value: f32, easing_fn: fn(f32) -> f32) -> Interpolator {
+        Interpolator {
             t: 1.0,
             max_t: 1.0,
             start_value: value,
             end_value: value,
             multiplier: 0.0,
+            easing_fn,
         }
     }
 
@@ -51,8 +57,7 @@ impl Interpolant {
             }
 
             let x = self.t / self.max_t;
-            let y = if x < 0.5 { 4.0 * x * x * x } else { 1.0 - (-2.0 * x + 2.0).powf(3.0) / 2.0 };
-            self.start_value + y * self.multiplier
+            self.start_value + (self.easing_fn)(x) * self.multiplier
         } else {
             self.end_value
         }
@@ -62,9 +67,11 @@ impl Interpolant {
 // 012
 // 345
 // 678
-pub fn draw_nine_tile(context: &mut gfx::RenderContext, left: i32, top: i32, right: i32, bottom: i32, assets: &[gfx::SpriteInfo; 9]) {
+pub fn draw_nine_tile(context: &mut gfx::RenderContext, left: i32, top: i32, width: i32, height: i32, assets: &[gfx::SpriteInfo; 9]) {
     const TILE_SIZE: i32 = 20;
 
+    let right = left + width;
+    let bottom = top + height;
     let inner_left = left + TILE_SIZE;
     let inner_right = right - TILE_SIZE;
     let inner_top = top + TILE_SIZE;

@@ -47,7 +47,7 @@ fn main() {
     let mut y_scroll: i32 = 0;
     let mut new_entities: Vec<Box<dyn entity::Entity>> = Vec::new();
     let mut menu_open = false;
-    let mut menu_anim = ui::Interpolant::new(0.0);
+    let mut menu_anim = ui::Interpolator::new(0.0, ui::cubic_inout);
 
     // XXX Ideally these would be spawned dynamically as the user moves into new
     // areas
@@ -67,7 +67,7 @@ fn main() {
                         if menu_open {
                             audio::play_effect(assets::SFX_PAUSE);
                             audio::pause_music();
-                            menu_anim.start(0.3, 0.0, 1.0);
+                            menu_anim.start(0.4, 0.0, 1.0);
                         } else {
                             audio::resume_music();
                         }
@@ -142,14 +142,14 @@ fn main() {
         });
 
         if menu_open {
-            let value = menu_anim.update(D_T);
+            let scale = menu_anim.update(D_T);
 
             ui::draw_nine_tile(
                 &mut eng.render_context,
                 50,
                 20,
-                40 + (value * 250.0) as i32,
-                40 + (value * 350.0) as i32,
+                40 + (scale * 250.0) as i32,
+                40 + (scale * 350.0) as i32,
                 &NINE_TILE
             );
         }
