@@ -64,7 +64,7 @@ const MAX_JUMP_COUNTER: u32 = 5;
 
 impl Player {
     pub fn new(xpos: f32, ypos: f32) -> Player {
-        let ground_offset = assets::SPR_PLAYER_BODY_IDLE.5 as i32 - assets::SPR_PLAYER_BODY_IDLE.7;
+        let ground_offset = assets::SPR_PLAYER_BODY_IDLE.5 - assets::SPR_PLAYER_BODY_IDLE.7;
         Player {
             bow_angle: -std::f32::consts::PI / 4.0,
             xpos,

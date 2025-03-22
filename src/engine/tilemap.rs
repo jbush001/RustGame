@@ -30,7 +30,7 @@ pub struct TileMap {
     pub height: i32,
     tiles: Vec<u8>,
     tile_flags: Vec<u8>,
-    atlas_coords: Vec<(f32, f32, f32, f32, u32, u32, i32, i32)>,
+    atlas_coords: Vec<gfx::SpriteInfo>,
     pub objects: Vec<(String, i32, i32)>,
     pub player_start_x: i32,
     pub player_start_y: i32,
@@ -64,16 +64,7 @@ impl TileMap {
             let right = reader.read_f32();
             let bottom = reader.read_f32();
 
-            atlas_coords.push((
-                left,
-                top,
-                right,
-                bottom,
-                TILE_SIZE as u32,
-                TILE_SIZE as u32,
-                0,
-                0,
-            ));
+            atlas_coords.push((left, top, right, bottom, TILE_SIZE, TILE_SIZE, 0, 0));
         }
 
         let mut tile_flags = vec![0; num_tiles];

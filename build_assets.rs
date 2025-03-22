@@ -248,7 +248,7 @@ fn write_sprite_locations(
         let (left, top, right, bottom, width, height) = *image_coordinates.get(path).unwrap();
         writeln!(
             file,
-            "pub const {}: (f32, f32, f32, f32, u32, u32, i32, i32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
+            "pub const {}: (f32, f32, f32, f32, i32, i32, i32, i32) = ({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?});",
             name, left, top, right, bottom, width, height, xorigin, yorigin
         )
         .unwrap();
@@ -296,10 +296,10 @@ fn write_tile_map_file(
     writer
         .write_all(&tile_map_info.player_start_y.to_le_bytes())
         .unwrap();
-
     writer
         .write_all(&(tile_map_info.image_paths.len() as u32).to_le_bytes())
         .unwrap();
+
     for path in tile_map_info.image_paths.iter() {
         assert!(image_coordinates.contains_key(path));
         let (left, top, right, bottom, _width, _height) = image_coordinates.get(path).unwrap();

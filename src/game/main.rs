@@ -16,7 +16,7 @@
 
 mod assets;
 mod entities;
-use engine::{audio, GameEngine};
+use engine::{audio, gfx, GameEngine, entity, util, ui};
 
 fn main() {
     let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
@@ -29,5 +29,121 @@ fn main() {
     eng.spawn_player(|x, y| Box::new(entities::Player::new(x as f32, y as f32)));
 
     let _temp = audio::play_music("music_track1.mp3");
-    eng.run();
+
+    const NINE_TILE: [gfx::SpriteInfo; 9] = [
+        assets::SPR_9TILE_A,
+        assets::SPR_9TILE_B,
+        assets::SPR_9TILE_C,
+        assets::SPR_9TILE_D,
+        assets::SPR_9TILE_E,
+        assets::SPR_9TILE_F,
+        assets::SPR_9TILE_G,
+        assets::SPR_9TILE_H,
+        assets::SPR_9TILE_I,
+    ];
+
+    let mut buttons: u32 = 0;
+    let mut x_scroll: i32 = 0;
+    let mut y_scroll: i32 = 0;
+    let mut new_entities: Vec<Box<dyn entity::Entity>> = Vec::new();
+    let mut menu_open = false;
+
+    // XXX Ideally these would be spawned dynamically as the user moves into new
+    // areas
+    eng.create_entities();
+
+    'main: loop {
+        for event in eng.event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(keycode),
+                    repeat: false,
+                    ..
+                } => {
+                    if keycode == sdl2::keyboard::Keycode::Escape {
+                        menu_open = !menu_open;
+                    } else {
+                        buttons |= engine::get_key_mask(keycode);
+                    }
+                }
+
+                sdl2::event::Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    buttons &= !engine::get_key_mask(keycode);
+                }
+
+                _ => {}
+            }
+        }
+
+        if !menu_open {
+            let player_rect = eng.entities[0].get_bounding_box();
+            if player_rect.right() > x_scroll + engine::RIGHT_SCROLL_BOUNDARY {
+                x_scroll = std::cmp::min(
+                    player_rect.right() - engine::RIGHT_SCROLL_BOUNDARY,
+                    eng.max_x_scroll,
+                );
+            } else if player_rect.left < x_scroll + engine::LEFT_SCROLL_BOUNDARY {
+                x_scroll = std::cmp::max(0, player_rect.left - engine::LEFT_SCROLL_BOUNDARY);
+            }
+
+            if player_rect.bottom() > y_scroll + engine::BOTTOM_SCROLL_BOUNDARY {
+                y_scroll = std::cmp::min(
+                    player_rect.bottom() - engine::BOTTOM_SCROLL_BOUNDARY,
+                    eng.max_y_scroll,
+                );
+            } else if player_rect.top < y_scroll + engine::TOP_SCROLL_BOUNDARY {
+                y_scroll = std::cmp::max(0, player_rect.top - engine::TOP_SCROLL_BOUNDARY);
+            }
+
+            eng.render_context.set_offset(x_scroll, y_scroll);
+
+            // Ideally we compute this dynamically, but there are complications
+            // because the first few calls to poll events in SDL take a
+            // significantly longer period of time.
+            const D_T: f32 = 1.0 / 60.0;
+
+            entity::handle_collisions(&mut eng.entities);
+            eng.entities.iter_mut().for_each(|entity| {
+                entity.update(
+                    D_T,
+                    &mut new_entities,
+                    buttons,
+                    &eng.tile_map,
+                    &player_rect,
+                );
+            });
+
+            eng.entities.append(&mut new_entities);
+            new_entities.clear();
+
+            // XXX despawn things that are too far outsize visible rect
+            eng.entities.retain(|entity| entity.is_live());
+        }
+
+        let visible_rect =
+            util::Rect::<i32>::new(x_scroll, y_scroll, gfx::WINDOW_WIDTH, gfx::WINDOW_HEIGHT);
+
+        eng.tile_map.draw(&mut eng.render_context, &visible_rect);
+
+        eng.entities.iter().for_each(|entity| {
+            entity.draw(&mut eng.render_context);
+        });
+
+        if menu_open {
+            ui::draw_nine_tile(
+                &mut eng.render_context,
+                50,
+                20,
+                350,
+                400,
+                &NINE_TILE
+            );
+        }
+
+        eng.render_context.render();
+    }
 }

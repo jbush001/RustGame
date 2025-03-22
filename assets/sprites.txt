@@ -16,3 +16,12 @@ SPR_PLAYER_CLIMB1 player/climb1.png 16 20
 SPR_PLAYER_CLIMB2 player/climb2.png 16 20
 SPR_BAT1 bat1.png 16 18
 SPR_BAT2 bat2.png 16 18
+SPR_9TILE_A 9tile/a.png 0 0
+SPR_9TILE_B 9tile/b.png 0 0
+SPR_9TILE_C 9tile/c.png 0 0
+SPR_9TILE_D 9tile/d.png 0 0
+SPR_9TILE_E 9tile/e.png 0 0
+SPR_9TILE_F 9tile/f.png 0 0
+SPR_9TILE_G 9tile/g.png 0 0
+SPR_9TILE_H 9tile/h.png 0 0
+SPR_9TILE_I 9tile/i.png 0 0

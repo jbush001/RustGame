@@ -17,6 +17,8 @@
 use gl::types::{GLint, GLsizeiptr, GLuint};
 use image::ImageReader;
 
+pub type SpriteInfo = (f32, f32, f32, f32, i32, i32, i32, i32);
+
 pub const WINDOW_WIDTH: i32 = 800;
 pub const WINDOW_HEIGHT: i32 = 450;
 
@@ -103,8 +105,8 @@ fn init_texture_atlas() -> GLuint {
             raster_data.as_ptr() as *const _,
         );
 
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as GLint);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as GLint);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as GLint);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as GLint);
         gl::TexParameteri(
             gl::TEXTURE_2D,
             gl::TEXTURE_WRAP_S,
@@ -119,20 +121,6 @@ fn init_texture_atlas() -> GLuint {
 
         atlas_texture_id
     }
-}
-
-//
-// The matrix is a, b, c, d
-// the point is x, y
-//
-// | a b | * | x | = | x' |
-// | c d |   | y |   | y' |
-//
-fn rotate(point: &(f32, f32), matrix: &(f32, f32, f32, f32)) -> (f32, f32) {
-    (
-        matrix.0 * point.0 + matrix.1 * point.1,
-        matrix.2 * point.0 + matrix.3 * point.1,
-    )
 }
 
 impl RenderContext {
@@ -203,7 +191,7 @@ impl RenderContext {
     pub fn draw_image(
         &mut self,
         position: (i32, i32),
-        image_info: &(f32, f32, f32, f32, u32, u32, i32, i32),
+        image_info: &SpriteInfo,
         rotation: f32,
         flip_h: bool,
     ) {
@@ -217,8 +205,6 @@ impl RenderContext {
             originx,
             originy,
         ) = *image_info;
-
-        let position = (position.0 - self.offset.0, position.1 - self.offset.1);
 
         if flip_h {
             std::mem::swap(&mut atlas_left, &mut atlas_right);
@@ -235,12 +221,23 @@ impl RenderContext {
         // +------+
         // 2      3
 
-        let display_left = -originx as f32;
-        let display_top = -originy as f32;
-        let display_right = display_left + width as f32;
-        let display_bottom = display_top + height as f32;
+        let display_left = -originx;
+        let display_top = -originy;
+        let display_right = display_left + width;
+        let display_bottom = display_top + height;
 
-        let (mut p0, mut p1, mut p2, mut p3) = if rotation == 0.0 {
+        // | a b | * | x | = | x' |
+        // | c d |   | y |   | y' |
+        //
+        #[inline]
+        fn rotate(point: &(i32, i32), matrix: &(f32, f32, f32, f32)) -> (i32, i32) {
+            (
+                (matrix.0 * point.0 as f32 + matrix.1 * point.1 as f32) as i32,
+                (matrix.2 * point.0 as f32 + matrix.3 * point.1 as f32) as i32,
+            )
+        }
+
+        let (p0, p1, p2, p3) = if rotation == 0.0 {
             // Fast path if there is no rotation
             (
                 (display_left, display_top),
@@ -263,28 +260,58 @@ impl RenderContext {
 
         // Convert from pixel coordinates to OpenGL coordinate space.
         #[inline]
-        fn to_ogl_coord(pt: &(f32, f32), position: &(i32, i32)) -> (f32, f32) {
+        fn translate(point: (i32, i32), translation: &(i32, i32)) -> (i32, i32) {
+            (point.0 + translation.0, point.1 + translation.1)
+        }
+
+        let offset = (position.0 - self.offset.0, position.1 - self.offset.1);
+        self.draw_quad(
+            translate(p0, &offset),
+            translate(p1, &offset),
+            translate(p2, &offset),
+            translate(p3, &offset),
+            atlas_left,
+            atlas_top,
+            atlas_right,
+            atlas_bottom,
+        );
+    }
+
+    pub fn draw_quad(
+        &mut self,
+        dest_ul: (i32, i32),
+        dest_ur: (i32, i32),
+        dest_ll: (i32, i32),
+        dest_lr: (i32, i32),
+        src_left: f32,
+        src_top: f32,
+        src_right: f32,
+        src_bottom: f32,
+    ) {
+        // Convert from pixel coordinates to OpenGL coordinate space.
+        #[inline]
+        fn to_ogl_coord(pt: &(i32, i32)) -> (f32, f32) {
             (
-                ((pt.0 + position.0 as f32) / WINDOW_WIDTH as f32) * 2.0 - 1.0,
-                1.0 - ((pt.1 + position.1 as f32) / WINDOW_HEIGHT as f32) * 2.0,
+                ((pt.0 as f32) / WINDOW_WIDTH as f32) * 2.0 - 1.0,
+                1.0 - ((pt.1 as f32) / WINDOW_HEIGHT as f32) * 2.0,
             )
         }
 
-        p0 = to_ogl_coord(&p0, &position);
-        p1 = to_ogl_coord(&p1, &position);
-        p2 = to_ogl_coord(&p2, &position);
-        p3 = to_ogl_coord(&p3, &position);
+        let p0 = to_ogl_coord(&dest_ul);
+        let p1 = to_ogl_coord(&dest_ur);
+        let p2 = to_ogl_coord(&dest_ll);
+        let p3 = to_ogl_coord(&dest_lr);
 
         #[cfg_attr(any(), rustfmt::skip)]
         self.vertices.extend_from_slice(&[
             // Upper left triangle (CW winding)
-            p0.0, p0.1, atlas_left, atlas_top, // 0
-            p1.0, p1.1, atlas_right, atlas_top, // 1
-            p2.0, p2.1, atlas_left, atlas_bottom, // 2
+            p0.0, p0.1, src_left, src_top, // 0
+            p1.0, p1.1, src_right, src_top, // 1
+            p2.0, p2.1, src_left, src_bottom, // 2
             // Lower right triangle
-            p1.0, p1.1, atlas_right, atlas_top, // 1
-            p3.0, p3.1, atlas_right, atlas_bottom, // 3
-            p2.0, p2.1, atlas_left, atlas_bottom, // 2
+            p1.0, p1.1, src_right, src_top, // 1
+            p3.0, p3.1, src_right, src_bottom, // 3
+            p2.0, p2.1, src_left, src_bottom, // 2
         ]);
     }
 
