@@ -154,7 +154,7 @@ struct AtlasAllocator {
 impl AtlasAllocator {
     fn new(width: u32, height: u32) -> AtlasAllocator {
         AtlasAllocator {
-            free_regions: vec![(0, 0, width, height)],
+            free_regions: vec![(1, 1, width, height)],
         }
     }
 
@@ -210,17 +210,45 @@ impl AtlasAllocator {
     }
 }
 
+const BORDER_SIZE: u32 = 2;
+
+fn copy_image_to_atlas(dest: &mut DynamicImage, src: &DynamicImage, x: u32, y: u32) {
+    let _ = dest.copy_from(src, x, y);
+
+    let src_width = src.width();
+    let src_height = src.height();
+
+    // We need to duplicate the edge pixels into the border region so
+    // bilinear filtering doesn't create black fringes.
+    for i in 0..src_height {
+        dest.put_pixel(x - 1, y + i, src.get_pixel(0, i));
+        dest.put_pixel(x + src_width, y + i, src.get_pixel(src_width - 1, i));
+    }
+
+    for j in 0..src_width {
+        dest.put_pixel(x + j, y - 1, src.get_pixel(j, 0));
+        dest.put_pixel(x + j, y + src_height, src.get_pixel(j, src_height - 1));
+    }
+
+    // Fill in corners
+    dest.put_pixel(x - 1, y - 1, src.get_pixel(0, 0)); // top left
+    dest.put_pixel(x + src_width, y - 1, src.get_pixel(src_width - 1, 0)); // top right
+    dest.put_pixel(x - 1, y + src_height, src.get_pixel(0, src_height - 1)); // bottom left
+    dest.put_pixel(x + src_width, y + src_height, src.get_pixel(src_width - 1, src_height - 1)); // bottom right
+}
+
 fn pack_images(
     images: &[(String, DynamicImage)],
 ) -> (DynamicImage, HashMap<String, AtlasLocation>) {
-    const BORDER_SIZE: u32 = 2;
     const ATLAS_SIZE: u32 = 512;
     let mut atlas = DynamicImage::new_rgba8(ATLAS_SIZE, ATLAS_SIZE);
     let mut allocator = AtlasAllocator::new(ATLAS_SIZE, ATLAS_SIZE);
     let mut image_coordinates: HashMap<String, AtlasLocation> = HashMap::new();
     for (name, img) in images.iter() {
         let (x, y) = allocator.alloc(img.width() + BORDER_SIZE, img.height() + BORDER_SIZE);
-        let _ = atlas.copy_from(img, x, y);
+
+        copy_image_to_atlas(&mut atlas, &img, x, y);
+
         println!("Packing image {} at {},{}", name, x, y);
         image_coordinates.insert(
             name.clone(),
