@@ -210,42 +210,50 @@ impl AtlasAllocator {
     }
 }
 
-const BORDER_SIZE: u32 = 2;
-
 fn copy_image_to_atlas(dest: &mut DynamicImage, src: &DynamicImage, x: u32, y: u32) {
     let _ = dest.copy_from(src, x, y);
 
-    let src_width = src.width();
-    let src_height = src.height();
-
     // We need to duplicate the edge pixels into the border region so
     // bilinear filtering doesn't create black fringes.
-    for i in 0..src_height {
-        dest.put_pixel(x - 1, y + i, src.get_pixel(0, i));
-        dest.put_pixel(x + src_width, y + i, src.get_pixel(src_width - 1, i));
+
+    // Duplicate left and right edges
+    for i in 0..src.height() {
+        let left = src.get_pixel(0, i);
+        dest.put_pixel(x - 1, y + i, left);
+        let right = src.get_pixel(src.width() - 1, i);
+        dest.put_pixel(x + src.width(), y + i, right);
     }
 
-    for j in 0..src_width {
-        dest.put_pixel(x + j, y - 1, src.get_pixel(j, 0));
-        dest.put_pixel(x + j, y + src_height, src.get_pixel(j, src_height - 1));
+    // Duplicate top and bottom edges
+    for j in 0..src.width() {
+        let top = src.get_pixel(j, 0);
+        dest.put_pixel(x + j, y - 1, top);
+        let bottom = src.get_pixel(j, src.height() - 1);
+        dest.put_pixel(x + j, y + src.height(), bottom);
     }
 
     // Fill in corners
-    dest.put_pixel(x - 1, y - 1, src.get_pixel(0, 0)); // top left
-    dest.put_pixel(x + src_width, y - 1, src.get_pixel(src_width - 1, 0)); // top right
-    dest.put_pixel(x - 1, y + src_height, src.get_pixel(0, src_height - 1)); // bottom left
-    dest.put_pixel(x + src_width, y + src_height, src.get_pixel(src_width - 1, src_height - 1)); // bottom right
+    let ul_corner = src.get_pixel(0, 0);
+    dest.put_pixel(x - 1, y - 1, ul_corner);
+    let ur_corner = src.get_pixel(src.width() - 1, 0);
+    dest.put_pixel(x + src.width(), y - 1, ur_corner);
+    let ll_corner = src.get_pixel(0, src.height() - 1);
+    dest.put_pixel(x - 1, y + src.height(), ll_corner);
+    let lr_corner = src.get_pixel(src.width() - 1, src.height() - 1);
+    dest.put_pixel(x + src.width(), y + src.height(), lr_corner);
 }
 
 fn pack_images(
     images: &[(String, DynamicImage)],
 ) -> (DynamicImage, HashMap<String, AtlasLocation>) {
     const ATLAS_SIZE: u32 = 512;
+    const ATLAS_SPACING: u32 = 2;
+
     let mut atlas = DynamicImage::new_rgba8(ATLAS_SIZE, ATLAS_SIZE);
     let mut allocator = AtlasAllocator::new(ATLAS_SIZE, ATLAS_SIZE);
     let mut image_coordinates: HashMap<String, AtlasLocation> = HashMap::new();
     for (name, img) in images.iter() {
-        let (x, y) = allocator.alloc(img.width() + BORDER_SIZE, img.height() + BORDER_SIZE);
+        let (x, y) = allocator.alloc(img.width() + ATLAS_SPACING, img.height() + ATLAS_SPACING);
 
         copy_image_to_atlas(&mut atlas, &img, x, y);
 
