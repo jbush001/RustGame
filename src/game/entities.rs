@@ -578,17 +578,9 @@ impl entity::Entity for Bat {
 
         if dx.abs() < 300 && dy.abs() < 300 {
             // Follow player
-            let mut xdir: f32 = if dx > 0 {
-                30.0
-            } else {
-                -30.0
-            };
+            let mut xdir: f32 = if dx > 0 { 30.0 } else { -30.0 };
 
-            let mut ydir: f32 = if dy > 0 {
-                30.0
-            } else {
-                -30.0
-            };
+            let mut ydir: f32 = if dy > 0 { 30.0 } else { -30.0 };
 
             if self.rng.random::<f32>() < 0.2 {
                 xdir = -xdir;

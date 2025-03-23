@@ -26,7 +26,11 @@ pub struct Interpolator {
 }
 
 pub fn cubic_inout(x: f32) -> f32 {
-    if x < 0.5 { 4.0 * x * x * x } else { 1.0 - (-2.0 * x + 2.0).powf(3.0) / 2.0 }
+    if x < 0.5 {
+        4.0 * x * x * x
+    } else {
+        1.0 - (-2.0 * x + 2.0).powf(3.0) / 2.0
+    }
 }
 
 impl Interpolator {
@@ -51,7 +55,7 @@ impl Interpolator {
 
     pub fn update(&mut self, d_t: f32) -> f32 {
         if self.t < self.max_t {
-            self.t = self.t + d_t;
+            self.t += d_t;
             if self.t > self.max_t {
                 self.t = self.max_t;
             }
@@ -67,7 +71,14 @@ impl Interpolator {
 // 012
 // 345
 // 678
-pub fn draw_nine_tile(context: &mut gfx::RenderContext, left: i32, top: i32, width: i32, height: i32, assets: &[gfx::SpriteInfo; 9]) {
+pub fn draw_nine_tile(
+    context: &mut gfx::RenderContext,
+    left: i32,
+    top: i32,
+    width: i32,
+    height: i32,
+    assets: &[gfx::SpriteInfo; 9],
+) {
     const TILE_SIZE: i32 = 20;
 
     let right = left + width;

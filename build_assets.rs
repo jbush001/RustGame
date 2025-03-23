@@ -255,7 +255,7 @@ fn pack_images(
     for (name, img) in images.iter() {
         let (x, y) = allocator.alloc(img.width() + ATLAS_SPACING, img.height() + ATLAS_SPACING);
 
-        copy_image_to_atlas(&mut atlas, &img, x, y);
+        copy_image_to_atlas(&mut atlas, img, x, y);
 
         println!("Packing image {} at {},{}", name, x, y);
         image_coordinates.insert(

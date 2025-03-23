@@ -25,6 +25,7 @@ pub const CONTROL_LEFT: u32 = 0x4;
 pub const CONTROL_RIGHT: u32 = 0x8;
 pub const CONTROL_FIRE: u32 = 0x10;
 pub const CONTROL_JUMP: u32 = 0x20;
+pub const CONTROL_MENU: u32 = 0x40;
 
 pub trait Entity: Any {
     fn update(

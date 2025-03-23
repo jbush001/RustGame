@@ -16,7 +16,7 @@
 
 mod assets;
 mod entities;
-use engine::{audio, gfx, GameEngine, entity, util, ui};
+use engine::{audio, entity, gfx, ui, util, GameEngine};
 
 fn main() {
     let mut eng = GameEngine::new(&assets::AUDIO_FILE_LIST);
@@ -42,7 +42,6 @@ fn main() {
         assets::SPR_9TILE_I,
     ];
 
-    let mut buttons: u32 = 0;
     let mut x_scroll: i32 = 0;
     let mut y_scroll: i32 = 0;
     let mut new_entities: Vec<Box<dyn entity::Entity>> = Vec::new();
@@ -53,39 +52,28 @@ fn main() {
     // areas
     eng.create_entities();
 
-    'main: loop {
-        for event in eng.event_pump.poll_iter() {
-            match event {
-                sdl2::event::Event::Quit { .. } => break 'main,
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(keycode),
-                    repeat: false,
-                    ..
-                } => {
-                    if keycode == sdl2::keyboard::Keycode::Escape {
-                        menu_open = !menu_open;
-                        if menu_open {
-                            audio::play_effect(assets::SFX_PAUSE);
-                            audio::pause_music();
-                            menu_anim.start(0.4, 0.0, 1.0);
-                        } else {
-                            audio::resume_music();
-                        }
-                    } else {
-                        buttons |= engine::get_key_mask(keycode);
-                    }
-                }
+    let mut old_menu_pressed = false;
 
-                sdl2::event::Event::KeyUp {
-                    keycode: Some(keycode),
-                    ..
-                } => {
-                    buttons &= !engine::get_key_mask(keycode);
-                }
+    loop {
+        eng.poll_events();
 
-                _ => {}
+        if eng.quit {
+            break;
+        }
+
+        let menu_pressed = (eng.buttons & entity::CONTROL_MENU) != 0;
+        if menu_pressed && !old_menu_pressed {
+            menu_open = !menu_open;
+            if menu_open {
+                audio::play_effect(assets::SFX_PAUSE);
+                audio::pause_music();
+                menu_anim.start(0.4, 0.0, 1.0);
+            } else {
+                audio::resume_music();
             }
         }
+
+        old_menu_pressed = menu_pressed;
 
         // Ideally we compute this dynamically, but there are complications
         // because the first few calls to poll events in SDL take a
@@ -119,7 +107,7 @@ fn main() {
                 entity.update(
                     D_T,
                     &mut new_entities,
-                    buttons,
+                    eng.buttons,
                     &eng.tile_map,
                     &player_rect,
                 );
@@ -150,7 +138,7 @@ fn main() {
                 20,
                 40 + (scale * 250.0) as i32,
                 40 + (scale * 350.0) as i32,
-                &NINE_TILE
+                &NINE_TILE,
             );
         }
 

@@ -18,8 +18,8 @@ pub mod audio;
 pub mod entity;
 pub mod gfx;
 pub mod tilemap;
-pub mod util;
 pub mod ui;
+pub mod util;
 extern crate sdl2;
 use std::collections::HashMap;
 
@@ -34,14 +34,16 @@ pub struct GameEngine {
     _sdl: sdl2::Sdl,
     pub render_context: gfx::RenderContext,
     pub tile_map: tilemap::TileMap,
-    pub event_pump: sdl2::EventPump,
+    event_pump: sdl2::EventPump,
     pub entities: Vec<Box<dyn entity::Entity>>,
     pub max_x_scroll: i32,
     pub max_y_scroll: i32,
     pub entity_fns: HashMap<String, EntityCreateFn>,
+    pub buttons: u32,
+    pub quit: bool,
 }
 
-pub fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
+fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
     match key {
         sdl2::keyboard::Keycode::Up => entity::CONTROL_UP,
         sdl2::keyboard::Keycode::Down => entity::CONTROL_DOWN,
@@ -49,6 +51,7 @@ pub fn get_key_mask(key: sdl2::keyboard::Keycode) -> u32 {
         sdl2::keyboard::Keycode::Right => entity::CONTROL_RIGHT,
         sdl2::keyboard::Keycode::X => entity::CONTROL_FIRE,
         sdl2::keyboard::Keycode::Z => entity::CONTROL_JUMP,
+        sdl2::keyboard::Keycode::Escape => entity::CONTROL_MENU,
         _ => 0,
     }
 }
@@ -67,6 +70,8 @@ impl GameEngine {
             max_x_scroll: 0,
             max_y_scroll: 0,
             entity_fns: HashMap::new(),
+            buttons: 0,
+            quit: false,
         }
     }
 
@@ -95,5 +100,29 @@ impl GameEngine {
     pub fn spawn_player(&mut self, create_fn: EntityCreateFn) {
         let entity = create_fn(self.tile_map.player_start_x, self.tile_map.player_start_y);
         self.entities.push(entity);
+    }
+
+    pub fn poll_events(&mut self) {
+        for event in self.event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::Quit { .. } => self.quit = true,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(keycode),
+                    repeat: false,
+                    ..
+                } => {
+                    self.buttons |= get_key_mask(keycode);
+                }
+
+                sdl2::event::Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    self.buttons &= !get_key_mask(keycode);
+                }
+
+                _ => {}
+            }
+        }
     }
 }
