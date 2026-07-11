@@ -127,7 +127,7 @@ impl RenderContext {
     pub fn new(sdl: &sdl2::Sdl) -> RenderContext {
         let video_subsystem = sdl.video().unwrap();
         let window = video_subsystem
-            .window("Game", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
+            .window("Game", WINDOW_WIDTH as u32 * 2, WINDOW_HEIGHT as u32 * 2)
             .opengl()
             .build()
             .unwrap();

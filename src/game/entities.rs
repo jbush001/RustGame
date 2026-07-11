@@ -368,7 +368,7 @@ impl entity::Entity for Player {
         COLL_MISSILE | COLL_ENEMY
     }
 
-    fn collide(&mut self, _other: &(dyn entity::Entity)) {
+    fn collide(&mut self, _other: &dyn entity::Entity) {
         // XXX check type
         if !self.killed {
             self.killed = true;

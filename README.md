@@ -5,7 +5,7 @@ Install Tiled level editor <https://www.mapeditor.org/>
 
 Install prerequisites (Linux)
 
-    sudo apt install -y libsdl2-dev cmake
+    sudo apt install -y libsdl2-dev libsdl2-mixer-dev cmake 
 
 (MacOS)
 
